@@ -1,6 +1,6 @@
--- 1. Customers
-CREATE TABLE Customers (
-    customer_id SERIAL PRIMARY KEY,
+-- 1. Users and Admins
+CREATE TABLE Users (
+    user_id SERIAL PRIMARY KEY,
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
@@ -10,6 +10,10 @@ CREATE TABLE Customers (
     state VARCHAR(50),
     zip_code VARCHAR(20),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Admins (
+    user_id INT REFERENCES Users(user_id)
 );
 
 -- 2. Categories (hierarchical)
@@ -76,7 +80,7 @@ CREATE TABLE Coupons (
 -- 8. Orders
 CREATE TABLE Orders (
     order_id SERIAL PRIMARY KEY,
-    customer_id INT REFERENCES Customers(customer_id) NOT NULL,
+    user_id INT REFERENCES Users(user_id) NOT NULL,
     coupon_id INT REFERENCES Coupons(coupon_id) NULL, -- optional discount
     order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) CHECK (status IN ('Pending', 'Paid', 'Shipped', 'Delivered', 'Cancelled')) NOT NULL,
@@ -119,9 +123,9 @@ CREATE TABLE Shipments (
 CREATE TABLE Reviews (
     review_id SERIAL PRIMARY KEY,
     product_id INT REFERENCES Products(product_id) ON DELETE CASCADE NOT NULL,
-    customer_id INT REFERENCES Customers(customer_id) ON DELETE CASCADE NOT NULL,
+    user_id INT REFERENCES Users(user_id) ON DELETE CASCADE NOT NULL,
     rating INT CHECK (rating BETWEEN 1 AND 5) NOT NULL,
     comment TEXT,
     review_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (product_id, customer_id) -- prevent duplicate reviews
+    UNIQUE (product_id, user_id) -- prevent duplicate reviews
 );

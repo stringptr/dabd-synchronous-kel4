@@ -83,157 +83,157 @@ INSERT INTO warehouses (name, address, city, state, zip_code) VALUES ('Stewart-W
 INSERT INTO warehouses (name, address, city, state, zip_code) VALUES ('Silva-Bell DC', '21191 Friedman Plain Apt. 268', 'Holderport', 'VA', '80015');
 INSERT INTO warehouses (name, address, city, state, zip_code) VALUES ('Dyer, Scott and Hawkins DC', '37600 Collins Green Apt. 837', 'New Danielton', 'NM', '38718');
 
--- Customers
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Christine', 'Bradley', 'kimbradley@example.com', '001-683-669-2353', '7082 Jeffrey Pines Suite 546', 'East Jennifer', 'AL', '22543');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Cameron', 'Jackson', 'vparks@example.org', '2558033000', '6739 Cheryl Alley', 'North Johnnyfurt', 'AS', '00848');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Andrew', 'Friedman', 'cruzkaren@example.net', '(932)273-7989', '85481 Castillo Green Suite 300', 'New Lisashire', 'NY', '36851');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Gabrielle', 'Wright', 'zamorajennifer@example.org', '411.681.5198x545', '34015 Mario Garden', 'Roberttown', 'NV', '42660');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Nicholas', 'Andrews', 'justin46@example.com', '420.410.8240x281', '794 Edward Lock', 'North Alyssa', 'NY', '09679');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Tyler', 'Barker', 'taylorclarke@example.com', '+1-336-442-3570x0412', '81612 Reed Brook Suite 610', 'South Carolynbury', 'AR', '35169');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Ronald', 'Johnson', 'andersonjohn@example.org', '410.212.3296x151', '507 Graham Islands Apt. 446', 'West Dianaberg', 'NV', '55415');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Vanessa', 'Christian', 'patrick01@example.net', '453-605-7347', '8617 Nichols Estates', 'Katherineberg', 'GU', '60643');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Elizabeth', 'White', 'ghatfield@example.com', '(665)662-2419x76878', '1290 Michael Camp Suite 184', 'Holderberg', 'DC', '31341');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Lawrence', 'Nelson', 'kyleparker@example.com', '001-768-621-2156x4952', '64411 Ellen Ridge', 'Schroederside', 'OH', '11027');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Amanda', 'Ford', 'vincentroy@example.com', '659.848.8218', '6405 Lisa Cape', 'North Eugene', 'FM', '49137');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Larry', 'Douglas', 'christopher23@example.org', '960-449-8603', '860 James Circle', 'North Brooke', 'OH', '78125');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Cindy', 'Gaines', 'millerlindsey@example.org', '9348713171', '162 Sutton Ridges', 'Lake Williamville', 'OR', '85437');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Justin', 'Spence', 'vunderwood@example.com', '4113375358', '2887 Thomas Tunnel', 'Georgeton', 'VT', '30214');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Taylor', 'Dougherty', 'simmonsangela@example.net', '697-922-3996', '83753 Seth Manor Apt. 024', 'Lake Jenniferside', 'MN', '46624');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Steven', 'Cordova', 'smithdenise@example.net', '832-736-2216x9069', '6706 Fleming Knolls Apt. 691', 'New Melissa', 'PW', '48299');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Heidi', 'Ayers', 'christopherbrown@example.org', '(442)661-0703x35084', '198 Becky Heights', 'Wesleybury', 'AK', '01840');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Kevin', 'Rodriguez', 'zburke@example.org', '9537021516', '463 Elizabeth Ridges Suite 348', 'North Aarontown', 'GU', '16031');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Nicole', 'Hill', 'xfisher@example.org', '389.961.5738x5512', '1239 Hubbard Parks Apt. 554', 'South Melissa', 'SC', '06479');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Kathryn', 'Burnett', 'umartin@example.com', '9244465467', '1710 Harris Views', 'Martinezfurt', 'AS', '35048');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Karen', 'Castillo', 'timothysharp@example.org', '675-343-8027', '572 Williams Port Apt. 546', 'Zavalamouth', 'HI', '73246');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Zachary', 'Evans', 'westroy@example.org', '5768327135', '2592 Patricia Meadows Suite 906', 'Port Josehaven', 'MO', '78006');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Erin', 'Thompson', 'kimberly34@example.org', '(908)892-7396x159', '53567 Jillian Parkway Suite 755', 'Erikland', 'OR', '92836');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Michelle', 'Allen', 'dylan27@example.org', '(927)732-0222x7111', '9171 Martin Tunnel Suite 298', 'Danielview', 'MP', '72916');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Richard', 'Tran', 'brooksshelby@example.com', '001-203-392-2026', '64710 Payne Ways Apt. 770', 'Port Whitney', 'MO', '25931');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Sean', 'Osborne', 'gina04@example.net', '532.367.2446', '94763 Amber Port Apt. 654', 'East Nicoleside', 'MD', '14751');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Holly', 'Robinson', 'davidhaynes@example.com', '(281)629-1635', '26676 Holloway Motorway Apt. 845', 'New Tracy', 'RI', '98663');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Courtney', 'Brooks', 'gsharp@example.net', '(440)267-5602x08019', '15439 Joshua Plains', 'New Jeffreyburgh', 'MI', '25722');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('John', 'Thompson', 'johnjones@example.org', '(855)601-9354x503', '333 Kelly Gateway', 'Ellisonshire', 'NE', '17836');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Adrian', 'Medina', 'anne83@example.org', '(844)712-9075', '12376 Charles Mount', 'Briannaview', 'GA', '09094');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Rebecca', 'Cruz', 'danielle93@example.com', '891-492-2671x31753', '7528 King Cove Apt. 096', 'South Lindseybury', 'AK', '01092');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Ashley', 'Moore', 'leslie24@example.org', '721.315.3550', '21914 Elizabeth Causeway Suite 797', 'West Steven', 'DC', '49569');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Heather', 'King', 'ericdavis@example.net', '945.981.9204', '7693 Nicole Throughway', 'New Brittany', 'OH', '56861');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Michael', 'Howard', 'martintanner@example.net', '+1-746-840-8585x88382', '62084 Olson Shoals Apt. 543', 'Jillianland', 'WY', '77257');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Peter', 'Peters', 'isaiahbell@example.org', '+1-825-562-4728', '01223 Miller Port Apt. 900', 'Fostermouth', 'AZ', '18114');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Robert', 'Smith', 'maria09@example.com', '(532)517-4003x91019', '89222 Huff Course Apt. 936', 'Lake Brandontown', 'NC', '19318');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Steven', 'Hopkins', 'ricardo61@example.net', '001-760-576-2643x8500', '34617 Hopkins Walks Apt. 133', 'Wilsonview', 'LA', '93896');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Christopher', 'Graham', 'sheilabaldwin@example.com', '(944)813-7277x685', '3494 Cindy Cape', 'Nicholeland', 'NJ', '43465');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Michele', 'Garcia', 'fsmith@example.com', '+1-999-632-4202x483', '1723 Reed Tunnel Suite 386', 'Shanetown', 'GA', '47547');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Morgan', 'Mejia', 'julie62@example.com', '+1-690-347-2386', '95385 Olson Grove', 'North Peter', 'KY', '31231');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Manuel', 'Lawrence', 'conleyantonio@example.org', '681.646.0476x1437', '0661 Bridges Walks', 'Natalieview', 'MH', '54777');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Melinda', 'Anderson', 'zfischer@example.net', '254-218-5899', '7291 Kimberly Inlet', 'Blakemouth', 'SD', '74176');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Paul', 'Roberts', 'michaelmullins@example.com', '5505337469', '7730 Ruiz Turnpike', 'New Sarahburgh', 'WA', '24540');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Robert', 'Barron', 'ppruitt@example.com', '001-219-808-7886x53859', '96342 Archer Burg Suite 504', 'East Maria', 'UT', '60192');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Brian', 'Wong', 'whubbard@example.org', '+1-367-806-6320', '073 Katie Pass', 'Lake Wandaside', 'GA', '64796');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('David', 'Moore', 'tammy33@example.com', '870-686-4942', '39831 Susan Hollow', 'North Justinshire', 'RI', '55360');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Shannon', 'Mcknight', 'bryanmorgan@example.net', '630.554.9824x388', '217 Robert Parkway', 'South Cynthiaview', 'TN', '29571');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Erica', 'Cooper', 'garciadebra@example.com', '001-492-881-5037x01709', '70308 Zachary Way Apt. 726', 'New Gabriel', 'MT', '72625');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Glenn', 'Berg', 'marissa85@example.org', '+1-807-228-8959x27411', '196 George Mountains Suite 620', 'New Dennistown', 'IA', '82407');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('David', 'Brown', 'virginiafisher@example.net', '244-335-9624x587', '42425 Ricky Brook', 'East Summermouth', 'MN', '33091');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Albert', 'Arnold', 'ashley60@example.org', '+1-767-702-4365x240', '648 Holly Via', 'Clarkeview', 'TX', '02633');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Tara', 'Russo', 'mary88@example.org', '859-877-3854', '23606 Roman Rapids', 'Campbellland', 'DC', '49368');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Bonnie', 'Bradley', 'qfaulkner@example.org', '(804)429-8622', '6617 Thompson Key', 'Bishopshire', 'PW', '79251');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Diane', 'Moore', 'jasonwalton@example.net', '368.587.7792x5604', '208 Woodard Via Apt. 153', 'Port Carol', 'FL', '17023');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Richard', 'Johnson', 'robertsbrandon@example.net', '001-576-629-1430x491', '38975 Rachel Ville', 'Andersonshire', 'RI', '71299');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Ryan', 'Murphy', 'vphillips@example.net', '001-524-205-9208x235', '6919 Hansen River Suite 298', 'Lake Vanessastad', 'MO', '70486');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('David', 'Smith', 'phopkins@example.net', '7799661869', '404 Laura Inlet', 'Scottburgh', 'MD', '30062');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Tamara', 'Douglas', 'uguerrero@example.com', '900-777-7321', '61920 Heather Village', 'New Jamesfort', 'ID', '28021');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Steve', 'Lee', 'lisachristian@example.com', '874-489-0476x078', '1076 Jones Throughway', 'Port Thomaston', 'PW', '90686');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Angela', 'Harrington', 'christopher32@example.net', '001-351-745-6340', '5811 Woodard Mission', 'Josephfurt', 'TN', '48439');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('John', 'Estrada', 'fwilliams@example.com', '6043093045', '39822 Linda Burg Apt. 966', 'Port Shelby', 'VA', '05731');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('John', 'Watson', 'rcohen@example.net', '001-307-888-0265x295', '693 Jennifer Junctions Suite 230', 'New Tricia', 'ME', '35057');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Melissa', 'Gordon', 'gillmary@example.com', '3893870920', '11326 Garcia Isle Suite 858', 'West Frankfurt', 'IA', '24942');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Dominique', 'Rodriguez', 'djohnson@example.net', '+1-622-905-3970x77454', '231 Christensen Highway', 'Reeseshire', 'MA', '96078');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('John', 'Nelson', 'alara@example.org', '(623)259-6053x02618', '7870 Rebecca Path', 'Williamston', 'MO', '31500');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Bob', 'Foster', 'xcalderon@example.org', '(381)264-0989', '091 Brian Streets', 'Lake Anthony', 'MN', '18229');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Andrew', 'Baker', 'haleysaunders@example.com', '001-859-279-5319x26009', '5745 Shepherd Roads', 'North Luis', 'WA', '73486');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Sydney', 'Campbell', 'sara38@example.org', '780-581-8965', '5662 Carla Spur Suite 217', 'Williamschester', 'MS', '02083');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jimmy', 'Cain', 'cochranmary@example.com', '+1-860-270-4726', '51585 Chad Flat', 'North Scottland', 'NE', '65650');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Lisa', 'Stewart', 'reedscott@example.org', '(622)244-1339x547', '5315 Silva Island Suite 191', 'Grahamport', 'PR', '94676');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Richard', 'Lewis', 'paul18@example.org', '259.774.8768', '23771 Sanchez Avenue Apt. 922', 'New Michaelfort', 'IA', '28945');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jake', 'Roth', 'rlewis@example.org', '796.544.0282', '7699 Jonathan Mill', 'Sellersburgh', 'IN', '94994');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Amanda', 'Morgan', 'brandonallen@example.org', '5914401693', '2347 Cassandra Pine Apt. 907', 'Loriland', 'MA', '35723');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Hannah', 'Martinez', 'cbrown@example.com', '(599)491-3831x00643', '2277 Owens Ford', 'South Oliviahaven', 'UT', '04927');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Stephanie', 'Morales', 'jessica07@example.org', '785.403.6059', '41074 David Park Suite 067', 'Williamchester', 'NH', '55583');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Devin', 'Carroll', 'wilkinsonrussell@example.org', '8033638564', '745 Brewer Fords Apt. 839', 'Goodmanside', 'VT', '36912');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Megan', 'George', 'scottrobin@example.net', '(509)495-5049x32664', '394 Garcia Courts', 'Lake Amy', 'VT', '70449');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Linda', 'Jones', 'riverakeith@example.com', '440.501.2762', '4225 Espinoza Summit Suite 188', 'East Jamie', 'NC', '84775');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Amy', 'Webb', 'diane41@example.com', '606.813.4956x47998', '586 Hanson Port', 'Leeside', 'IA', '00986');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Melissa', 'Hodge', 'zmoore@example.org', '4802926166', '5557 Tapia Isle', 'Wadehaven', 'MO', '42768');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Mark', 'Blake', 'lbell@example.com', '464.600.0687x5868', '1665 Nguyen Drives', 'West Michelle', 'KS', '09507');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Kayla', 'Chapman', 'afitzpatrick@example.org', '738.968.6083', '170 Ricky Cape', 'Lisaview', 'FL', '28309');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('William', 'Jenkins', 'brandonsteele@example.net', '5896830941', '619 Carlson Ways', 'Taylorview', 'MA', '20536');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Angela', 'Rodriguez', 'paul48@example.org', '950-573-5674x8095', '059 Donald Meadows Apt. 294', 'Dylanton', 'AS', '31075');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Tara', 'Gomez', 'martinramirez@example.org', '834.920.3197x774', '514 William Manors Suite 823', 'New Alejandraberg', 'MP', '79979');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Luke', 'Davidson', 'zhorton@example.com', '796-823-3260', '76748 Corey Mills Apt. 066', 'Port Brittany', 'TN', '84680');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Robin', 'Miller', 'holdenalyssa@example.org', '288.824.2655x946', '27237 Shannon Parkway', 'East Nicolebury', 'NJ', '89539');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Maria', 'Brown', 'rstewart@example.net', '+1-670-384-7795', '7553 Vanessa Wells Apt. 737', 'West Brandymouth', 'NM', '79475');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Brian', 'Carpenter', 'william96@example.org', '(283)984-8876x3802', '23961 Danny Roads Apt. 518', 'East Sarahside', 'NC', '84855');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Paul', 'Rios', 'dixondennis@example.org', '+1-970-466-9010x7923', '8933 Whitehead Pass', 'Stanleymouth', 'PW', '06559');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('John', 'Stewart', 'dhenry@example.net', '+1-368-433-5570x773', '55505 Lowe Bypass', 'Davidland', 'NC', '63211');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Christine', 'Lowe', 'zacharypage@example.com', '904-258-8311x414', '35036 Wilson Road', 'Fuentesside', 'PA', '10285');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Julia', 'Aguilar', 'cjohns@example.net', '880.923.4456x844', '36640 Ryan Dale Suite 737', 'Port David', 'OR', '65803');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Michael', 'Mccarthy', 'carolynwarner@example.org', '+1-773-618-6830x29158', '32416 Jones Key', 'Amandashire', 'NE', '51496');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Andrew', 'Owens', 'kevinnorton@example.com', '001-646-321-5958x417', '70502 Chase Shores Apt. 698', 'Lake Maryport', 'MH', '13461');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jeremy', 'Hines', 'elizabeth60@example.net', '001-448-837-7402', '330 Roger Walk Suite 099', 'Mannburgh', 'DE', '73616');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Pamela', 'Perry', 'mstevens@example.net', '(466)461-0256x3420', '349 Charles Fords', 'Stantonside', 'IN', '55679');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Tracy', 'Williamson', 'davismichelle@example.net', '252-444-6144', '51746 Hamilton Inlet', 'Port Lisa', 'GU', '07388');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Daniel', 'Reyes', 'ywalton@example.org', '499-456-9559', '764 Kenneth Cape Apt. 385', 'East Juliamouth', 'MA', '08830');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jessica', 'Irwin', 'kimberly48@example.com', '622.788.3904x7331', '1574 Eduardo Course Apt. 497', 'Lawrencemouth', 'IL', '08827');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Dennis', 'Watts', 'alexis54@example.org', '276.361.8308x580', '14391 Davis Circles Suite 367', 'Jacksonville', 'AS', '02438');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Todd', 'Dunn', 'ndavis@example.net', '(885)564-2570x6802', '154 Jasmine Flat', 'South Arthurburgh', 'ID', '07609');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jackson', 'Shaw', 'tiffany50@example.net', '722-341-1420x66701', '9920 Tonya Locks Suite 338', 'East Derek', 'DC', '36922');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Benjamin', 'Esparza', 'mistymatthews@example.org', '+1-620-556-2019x01134', '133 Michael Path', 'Mosesville', 'WY', '28639');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Eric', 'Quinn', 'matthew64@example.com', '(934)828-6449', '49866 Joseph Summit', 'Lake Lisastad', 'IA', '57814');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Karen', 'Fields', 'pweber@example.com', '+1-898-752-9735x61526', '147 Horne Land Apt. 809', 'Butlerville', 'KY', '62462');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Kirsten', 'Wood', 'richardperkins@example.com', '(547)846-6535', '985 Eric Flats', 'Snydershire', 'FL', '39535');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Dakota', 'Wells', 'danielleboyer@example.net', '(238)835-4346x85863', '8249 Lawrence Freeway', 'South Colebury', 'TX', '66049');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Christopher', 'Long', 'heatherdavis@example.org', '2733726072', '967 Angela Dam Suite 493', 'East Tiffanyport', 'MO', '26251');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Brittany', 'Evans', 'usanders@example.net', '929-426-4563x391', '36948 Victoria Creek Apt. 664', 'Davischester', 'NV', '88612');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Anthony', 'Fleming', 'jefferywalker@example.org', '8165125901', '901 Jeremy Groves Suite 376', 'Douglasborough', 'TX', '36366');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Amanda', 'Garcia', 'petersenamy@example.net', '310-316-7930x148', '49910 Melinda Shoal Apt. 028', 'Castanedaville', 'MO', '71842');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Yvette', 'Adkins', 'waltercarrie@example.org', '721-534-8548x4203', '0791 Hood Ramp', 'East Samanthafurt', 'AR', '10965');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Mario', 'Castillo', 'gibbsdarren@example.org', '001-319-640-2470x288', '28745 Regina Square', 'Port Sarahborough', 'NE', '62948');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Melinda', 'Richardson', 'bphillips@example.org', '+1-613-481-0749x161', '215 Wiley Club', 'North Samantha', 'IL', '43950');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Brett', 'Carlson', 'lchurch@example.com', '968-645-5252', '25471 Silva Ranch', 'Abigailstad', 'NE', '51675');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Cassandra', 'Hunter', 'tinajohnson@example.org', '001-656-475-6355', '1726 Anderson Shoal', 'Richardtown', 'KS', '50672');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Morgan', 'Alvarez', 'millermichele@example.net', '313-206-8624x087', '668 Emily Unions', 'South Derekberg', 'AL', '62329');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Rickey', 'Lee', 'martinezmolly@example.net', '(423)628-2228', '475 Alicia Knolls', 'Anthonyview', 'CO', '05614');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jessica', 'Spencer', 'hjacobs@example.org', '(411)235-0535x722', '1578 Carol Mountain Apt. 028', 'Port Charlesport', 'CT', '82035');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Keith', 'Delacruz', 'john19@example.com', '001-428-314-4786x74280', '63578 Emily Forks', 'Grantville', 'TN', '19625');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Connor', 'Holloway', 'pking@example.net', '(699)205-5855x7599', '90696 Hannah Knolls Apt. 898', 'Smithland', 'VA', '06854');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Paul', 'Fisher', 'jesusavila@example.com', '301.665.2761x368', '53084 Timothy Locks', 'Lake Chloe', 'MO', '39266');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Joseph', 'Stevens', 'lheath@example.com', '6842232423', '1724 Jennifer Junctions', 'Port Raymond', 'CT', '43443');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Amanda', 'Stewart', 'meghan90@example.com', '(979)260-2425', '32959 Howard Forges', 'West Danielleberg', 'NC', '51209');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jeremy', 'Ramirez', 'cassielong@example.net', '+1-291-672-1742x922', '7821 Cohen Ramp', 'South Patrick', 'IL', '62739');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Michele', 'Flowers', 'iwalker@example.com', '001-403-213-9280x48502', '90193 Jason River Apt. 797', 'New Bryanton', 'SD', '03342');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Ivan', 'Perkins', 'russell62@example.org', '464-571-8559x40799', '5323 Suzanne Run', 'Owensside', 'WI', '10392');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Justin', 'Bennett', 'pgross@example.com', '9199453911', '6505 Donna Rue Suite 120', 'New Christopher', 'UT', '85436');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Manuel', 'Kelley', 'zbates@example.net', '+1-802-923-1167x870', '53223 Martinez Knolls Apt. 126', 'Deborahstad', 'MT', '29424');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Rhonda', 'Miller', 'megan94@example.org', '4005375398', '24659 James Fords', 'South Kari', 'ND', '94034');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jonathan', 'Henry', 'lauriecrawford@example.com', '001-615-238-2011', '2664 Ryan Way Apt. 512', 'Whiteview', 'MD', '45776');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jeffrey', 'Morton', 'tracydavenport@example.net', '(456)497-6487x8496', '451 Kurt Road Apt. 506', 'New Robert', 'MS', '70471');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Sarah', 'Trevino', 'lorettabrown@example.com', '001-627-667-2935x09793', '29146 Santana Ferry', 'Port James', 'MH', '65175');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Steven', 'Riggs', 'mitchellmichael@example.com', '001-497-325-1840x7033', '8233 Brewer Drives Apt. 945', 'Lake Sandrafort', 'MO', '96163');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Sean', 'Foster', 'qmccoy@example.org', '463.801.1220x08484', '333 Sweeney Spring Suite 082', 'Jimenezland', 'UT', '27612');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Patrick', 'Christian', 'catherine46@example.net', '(508)456-4901', '519 Neil Views Apt. 115', 'Peterfort', 'MI', '70047');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jennifer', 'Kline', 'fernandezbrandon@example.net', '001-789-804-4104x0431', '513 Lee Roads Apt. 483', 'Collinsmouth', 'MI', '66782');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Brendan', 'Williams', 'garciarichard@example.com', '(947)317-7840x1902', '883 Miles Mews Apt. 158', 'Colemanhaven', 'NE', '15288');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Christopher', 'Duncan', 'lgonzales@example.net', '001-583-732-6170x505', '5819 Henderson Mill', 'New Mike', 'MN', '31881');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Vanessa', 'Lane', 'justinhughes@example.net', '(617)875-8015', '793 Lisa Trail Apt. 028', 'Jamesmouth', 'HI', '63283');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Karen', 'Jordan', 'jonathanjones@example.com', '001-902-552-8546x1308', '972 Danielle Track', 'New Michelle', 'PR', '22379');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Stephanie', 'Leon', 'vbryant@example.org', '584-225-2786', '71210 Jennifer Harbors', 'East Kenneth', 'LA', '64576');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jay', 'Byrd', 'baileydonna@example.net', '+1-877-719-6199x71659', '7640 Warren Freeway Apt. 440', 'New Jenniferberg', 'GA', '37404');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Sierra', 'Downs', 'xfleming@example.org', '001-279-732-2191x43907', '3601 Vasquez Route Apt. 150', 'North Chadberg', 'MT', '01669');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Anthony', 'Johnson', 'kbailey@example.net', '747.659.7833', '7192 Justin Lodge', 'Hudsonview', 'MS', '32281');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Tara', 'Page', 'ymercer@example.com', '+1-632-803-1726x65282', '9272 Smith Valleys Apt. 208', 'Beckland', 'ME', '87865');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Julie', 'Tyler', 'christopher08@example.com', '532-871-6303x356', '10009 Alicia Ranch', 'North Angela', 'NC', '15437');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jessica', 'Pacheco', 'melissa80@example.org', '635.541.5892x90930', '6136 Jackson Row Apt. 812', 'Lake Cynthia', 'NC', '09253');
-INSERT INTO customers (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Michael', 'Riggs', 'kimberly47@example.org', '(931)510-5833x096', '842 Angela Crossing Suite 269', 'South Yolanda', 'VA', '47159');
+-- Users
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Christine', 'Bradley', 'kimbradley@example.com', '001-683-669-2353', '7082 Jeffrey Pines Suite 546', 'East Jennifer', 'AL', '22543');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Cameron', 'Jackson', 'vparks@example.org', '2558033000', '6739 Cheryl Alley', 'North Johnnyfurt', 'AS', '00848');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Andrew', 'Friedman', 'cruzkaren@example.net', '(932)273-7989', '85481 Castillo Green Suite 300', 'New Lisashire', 'NY', '36851');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Gabrielle', 'Wright', 'zamorajennifer@example.org', '411.681.5198x545', '34015 Mario Garden', 'Roberttown', 'NV', '42660');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Nicholas', 'Andrews', 'justin46@example.com', '420.410.8240x281', '794 Edward Lock', 'North Alyssa', 'NY', '09679');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Tyler', 'Barker', 'taylorclarke@example.com', '+1-336-442-3570x0412', '81612 Reed Brook Suite 610', 'South Carolynbury', 'AR', '35169');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Ronald', 'Johnson', 'andersonjohn@example.org', '410.212.3296x151', '507 Graham Islands Apt. 446', 'West Dianaberg', 'NV', '55415');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Vanessa', 'Christian', 'patrick01@example.net', '453-605-7347', '8617 Nichols Estates', 'Katherineberg', 'GU', '60643');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Elizabeth', 'White', 'ghatfield@example.com', '(665)662-2419x76878', '1290 Michael Camp Suite 184', 'Holderberg', 'DC', '31341');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Lawrence', 'Nelson', 'kyleparker@example.com', '001-768-621-2156x4952', '64411 Ellen Ridge', 'Schroederside', 'OH', '11027');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Amanda', 'Ford', 'vincentroy@example.com', '659.848.8218', '6405 Lisa Cape', 'North Eugene', 'FM', '49137');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Larry', 'Douglas', 'christopher23@example.org', '960-449-8603', '860 James Circle', 'North Brooke', 'OH', '78125');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Cindy', 'Gaines', 'millerlindsey@example.org', '9348713171', '162 Sutton Ridges', 'Lake Williamville', 'OR', '85437');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Justin', 'Spence', 'vunderwood@example.com', '4113375358', '2887 Thomas Tunnel', 'Georgeton', 'VT', '30214');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Taylor', 'Dougherty', 'simmonsangela@example.net', '697-922-3996', '83753 Seth Manor Apt. 024', 'Lake Jenniferside', 'MN', '46624');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Steven', 'Cordova', 'smithdenise@example.net', '832-736-2216x9069', '6706 Fleming Knolls Apt. 691', 'New Melissa', 'PW', '48299');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Heidi', 'Ayers', 'christopherbrown@example.org', '(442)661-0703x35084', '198 Becky Heights', 'Wesleybury', 'AK', '01840');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Kevin', 'Rodriguez', 'zburke@example.org', '9537021516', '463 Elizabeth Ridges Suite 348', 'North Aarontown', 'GU', '16031');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Nicole', 'Hill', 'xfisher@example.org', '389.961.5738x5512', '1239 Hubbard Parks Apt. 554', 'South Melissa', 'SC', '06479');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Kathryn', 'Burnett', 'umartin@example.com', '9244465467', '1710 Harris Views', 'Martinezfurt', 'AS', '35048');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Karen', 'Castillo', 'timothysharp@example.org', '675-343-8027', '572 Williams Port Apt. 546', 'Zavalamouth', 'HI', '73246');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Zachary', 'Evans', 'westroy@example.org', '5768327135', '2592 Patricia Meadows Suite 906', 'Port Josehaven', 'MO', '78006');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Erin', 'Thompson', 'kimberly34@example.org', '(908)892-7396x159', '53567 Jillian Parkway Suite 755', 'Erikland', 'OR', '92836');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Michelle', 'Allen', 'dylan27@example.org', '(927)732-0222x7111', '9171 Martin Tunnel Suite 298', 'Danielview', 'MP', '72916');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Richard', 'Tran', 'brooksshelby@example.com', '001-203-392-2026', '64710 Payne Ways Apt. 770', 'Port Whitney', 'MO', '25931');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Sean', 'Osborne', 'gina04@example.net', '532.367.2446', '94763 Amber Port Apt. 654', 'East Nicoleside', 'MD', '14751');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Holly', 'Robinson', 'davidhaynes@example.com', '(281)629-1635', '26676 Holloway Motorway Apt. 845', 'New Tracy', 'RI', '98663');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Courtney', 'Brooks', 'gsharp@example.net', '(440)267-5602x08019', '15439 Joshua Plains', 'New Jeffreyburgh', 'MI', '25722');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('John', 'Thompson', 'johnjones@example.org', '(855)601-9354x503', '333 Kelly Gateway', 'Ellisonshire', 'NE', '17836');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Adrian', 'Medina', 'anne83@example.org', '(844)712-9075', '12376 Charles Mount', 'Briannaview', 'GA', '09094');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Rebecca', 'Cruz', 'danielle93@example.com', '891-492-2671x31753', '7528 King Cove Apt. 096', 'South Lindseybury', 'AK', '01092');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Ashley', 'Moore', 'leslie24@example.org', '721.315.3550', '21914 Elizabeth Causeway Suite 797', 'West Steven', 'DC', '49569');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Heather', 'King', 'ericdavis@example.net', '945.981.9204', '7693 Nicole Throughway', 'New Brittany', 'OH', '56861');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Michael', 'Howard', 'martintanner@example.net', '+1-746-840-8585x88382', '62084 Olson Shoals Apt. 543', 'Jillianland', 'WY', '77257');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Peter', 'Peters', 'isaiahbell@example.org', '+1-825-562-4728', '01223 Miller Port Apt. 900', 'Fostermouth', 'AZ', '18114');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Robert', 'Smith', 'maria09@example.com', '(532)517-4003x91019', '89222 Huff Course Apt. 936', 'Lake Brandontown', 'NC', '19318');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Steven', 'Hopkins', 'ricardo61@example.net', '001-760-576-2643x8500', '34617 Hopkins Walks Apt. 133', 'Wilsonview', 'LA', '93896');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Christopher', 'Graham', 'sheilabaldwin@example.com', '(944)813-7277x685', '3494 Cindy Cape', 'Nicholeland', 'NJ', '43465');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Michele', 'Garcia', 'fsmith@example.com', '+1-999-632-4202x483', '1723 Reed Tunnel Suite 386', 'Shanetown', 'GA', '47547');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Morgan', 'Mejia', 'julie62@example.com', '+1-690-347-2386', '95385 Olson Grove', 'North Peter', 'KY', '31231');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Manuel', 'Lawrence', 'conleyantonio@example.org', '681.646.0476x1437', '0661 Bridges Walks', 'Natalieview', 'MH', '54777');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Melinda', 'Anderson', 'zfischer@example.net', '254-218-5899', '7291 Kimberly Inlet', 'Blakemouth', 'SD', '74176');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Paul', 'Roberts', 'michaelmullins@example.com', '5505337469', '7730 Ruiz Turnpike', 'New Sarahburgh', 'WA', '24540');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Robert', 'Barron', 'ppruitt@example.com', '001-219-808-7886x53859', '96342 Archer Burg Suite 504', 'East Maria', 'UT', '60192');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Brian', 'Wong', 'whubbard@example.org', '+1-367-806-6320', '073 Katie Pass', 'Lake Wandaside', 'GA', '64796');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('David', 'Moore', 'tammy33@example.com', '870-686-4942', '39831 Susan Hollow', 'North Justinshire', 'RI', '55360');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Shannon', 'Mcknight', 'bryanmorgan@example.net', '630.554.9824x388', '217 Robert Parkway', 'South Cynthiaview', 'TN', '29571');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Erica', 'Cooper', 'garciadebra@example.com', '001-492-881-5037x01709', '70308 Zachary Way Apt. 726', 'New Gabriel', 'MT', '72625');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Glenn', 'Berg', 'marissa85@example.org', '+1-807-228-8959x27411', '196 George Mountains Suite 620', 'New Dennistown', 'IA', '82407');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('David', 'Brown', 'virginiafisher@example.net', '244-335-9624x587', '42425 Ricky Brook', 'East Summermouth', 'MN', '33091');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Albert', 'Arnold', 'ashley60@example.org', '+1-767-702-4365x240', '648 Holly Via', 'Clarkeview', 'TX', '02633');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Tara', 'Russo', 'mary88@example.org', '859-877-3854', '23606 Roman Rapids', 'Campbellland', 'DC', '49368');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Bonnie', 'Bradley', 'qfaulkner@example.org', '(804)429-8622', '6617 Thompson Key', 'Bishopshire', 'PW', '79251');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Diane', 'Moore', 'jasonwalton@example.net', '368.587.7792x5604', '208 Woodard Via Apt. 153', 'Port Carol', 'FL', '17023');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Richard', 'Johnson', 'robertsbrandon@example.net', '001-576-629-1430x491', '38975 Rachel Ville', 'Andersonshire', 'RI', '71299');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Ryan', 'Murphy', 'vphillips@example.net', '001-524-205-9208x235', '6919 Hansen River Suite 298', 'Lake Vanessastad', 'MO', '70486');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('David', 'Smith', 'phopkins@example.net', '7799661869', '404 Laura Inlet', 'Scottburgh', 'MD', '30062');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Tamara', 'Douglas', 'uguerrero@example.com', '900-777-7321', '61920 Heather Village', 'New Jamesfort', 'ID', '28021');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Steve', 'Lee', 'lisachristian@example.com', '874-489-0476x078', '1076 Jones Throughway', 'Port Thomaston', 'PW', '90686');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Angela', 'Harrington', 'christopher32@example.net', '001-351-745-6340', '5811 Woodard Mission', 'Josephfurt', 'TN', '48439');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('John', 'Estrada', 'fwilliams@example.com', '6043093045', '39822 Linda Burg Apt. 966', 'Port Shelby', 'VA', '05731');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('John', 'Watson', 'rcohen@example.net', '001-307-888-0265x295', '693 Jennifer Junctions Suite 230', 'New Tricia', 'ME', '35057');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Melissa', 'Gordon', 'gillmary@example.com', '3893870920', '11326 Garcia Isle Suite 858', 'West Frankfurt', 'IA', '24942');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Dominique', 'Rodriguez', 'djohnson@example.net', '+1-622-905-3970x77454', '231 Christensen Highway', 'Reeseshire', 'MA', '96078');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('John', 'Nelson', 'alara@example.org', '(623)259-6053x02618', '7870 Rebecca Path', 'Williamston', 'MO', '31500');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Bob', 'Foster', 'xcalderon@example.org', '(381)264-0989', '091 Brian Streets', 'Lake Anthony', 'MN', '18229');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Andrew', 'Baker', 'haleysaunders@example.com', '001-859-279-5319x26009', '5745 Shepherd Roads', 'North Luis', 'WA', '73486');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Sydney', 'Campbell', 'sara38@example.org', '780-581-8965', '5662 Carla Spur Suite 217', 'Williamschester', 'MS', '02083');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jimmy', 'Cain', 'cochranmary@example.com', '+1-860-270-4726', '51585 Chad Flat', 'North Scottland', 'NE', '65650');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Lisa', 'Stewart', 'reedscott@example.org', '(622)244-1339x547', '5315 Silva Island Suite 191', 'Grahamport', 'PR', '94676');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Richard', 'Lewis', 'paul18@example.org', '259.774.8768', '23771 Sanchez Avenue Apt. 922', 'New Michaelfort', 'IA', '28945');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jake', 'Roth', 'rlewis@example.org', '796.544.0282', '7699 Jonathan Mill', 'Sellersburgh', 'IN', '94994');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Amanda', 'Morgan', 'brandonallen@example.org', '5914401693', '2347 Cassandra Pine Apt. 907', 'Loriland', 'MA', '35723');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Hannah', 'Martinez', 'cbrown@example.com', '(599)491-3831x00643', '2277 Owens Ford', 'South Oliviahaven', 'UT', '04927');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Stephanie', 'Morales', 'jessica07@example.org', '785.403.6059', '41074 David Park Suite 067', 'Williamchester', 'NH', '55583');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Devin', 'Carroll', 'wilkinsonrussell@example.org', '8033638564', '745 Brewer Fords Apt. 839', 'Goodmanside', 'VT', '36912');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Megan', 'George', 'scottrobin@example.net', '(509)495-5049x32664', '394 Garcia Courts', 'Lake Amy', 'VT', '70449');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Linda', 'Jones', 'riverakeith@example.com', '440.501.2762', '4225 Espinoza Summit Suite 188', 'East Jamie', 'NC', '84775');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Amy', 'Webb', 'diane41@example.com', '606.813.4956x47998', '586 Hanson Port', 'Leeside', 'IA', '00986');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Melissa', 'Hodge', 'zmoore@example.org', '4802926166', '5557 Tapia Isle', 'Wadehaven', 'MO', '42768');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Mark', 'Blake', 'lbell@example.com', '464.600.0687x5868', '1665 Nguyen Drives', 'West Michelle', 'KS', '09507');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Kayla', 'Chapman', 'afitzpatrick@example.org', '738.968.6083', '170 Ricky Cape', 'Lisaview', 'FL', '28309');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('William', 'Jenkins', 'brandonsteele@example.net', '5896830941', '619 Carlson Ways', 'Taylorview', 'MA', '20536');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Angela', 'Rodriguez', 'paul48@example.org', '950-573-5674x8095', '059 Donald Meadows Apt. 294', 'Dylanton', 'AS', '31075');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Tara', 'Gomez', 'martinramirez@example.org', '834.920.3197x774', '514 William Manors Suite 823', 'New Alejandraberg', 'MP', '79979');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Luke', 'Davidson', 'zhorton@example.com', '796-823-3260', '76748 Corey Mills Apt. 066', 'Port Brittany', 'TN', '84680');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Robin', 'Miller', 'holdenalyssa@example.org', '288.824.2655x946', '27237 Shannon Parkway', 'East Nicolebury', 'NJ', '89539');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Maria', 'Brown', 'rstewart@example.net', '+1-670-384-7795', '7553 Vanessa Wells Apt. 737', 'West Brandymouth', 'NM', '79475');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Brian', 'Carpenter', 'william96@example.org', '(283)984-8876x3802', '23961 Danny Roads Apt. 518', 'East Sarahside', 'NC', '84855');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Paul', 'Rios', 'dixondennis@example.org', '+1-970-466-9010x7923', '8933 Whitehead Pass', 'Stanleymouth', 'PW', '06559');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('John', 'Stewart', 'dhenry@example.net', '+1-368-433-5570x773', '55505 Lowe Bypass', 'Davidland', 'NC', '63211');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Christine', 'Lowe', 'zacharypage@example.com', '904-258-8311x414', '35036 Wilson Road', 'Fuentesside', 'PA', '10285');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Julia', 'Aguilar', 'cjohns@example.net', '880.923.4456x844', '36640 Ryan Dale Suite 737', 'Port David', 'OR', '65803');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Michael', 'Mccarthy', 'carolynwarner@example.org', '+1-773-618-6830x29158', '32416 Jones Key', 'Amandashire', 'NE', '51496');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Andrew', 'Owens', 'kevinnorton@example.com', '001-646-321-5958x417', '70502 Chase Shores Apt. 698', 'Lake Maryport', 'MH', '13461');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jeremy', 'Hines', 'elizabeth60@example.net', '001-448-837-7402', '330 Roger Walk Suite 099', 'Mannburgh', 'DE', '73616');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Pamela', 'Perry', 'mstevens@example.net', '(466)461-0256x3420', '349 Charles Fords', 'Stantonside', 'IN', '55679');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Tracy', 'Williamson', 'davismichelle@example.net', '252-444-6144', '51746 Hamilton Inlet', 'Port Lisa', 'GU', '07388');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Daniel', 'Reyes', 'ywalton@example.org', '499-456-9559', '764 Kenneth Cape Apt. 385', 'East Juliamouth', 'MA', '08830');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jessica', 'Irwin', 'kimberly48@example.com', '622.788.3904x7331', '1574 Eduardo Course Apt. 497', 'Lawrencemouth', 'IL', '08827');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Dennis', 'Watts', 'alexis54@example.org', '276.361.8308x580', '14391 Davis Circles Suite 367', 'Jacksonville', 'AS', '02438');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Todd', 'Dunn', 'ndavis@example.net', '(885)564-2570x6802', '154 Jasmine Flat', 'South Arthurburgh', 'ID', '07609');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jackson', 'Shaw', 'tiffany50@example.net', '722-341-1420x66701', '9920 Tonya Locks Suite 338', 'East Derek', 'DC', '36922');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Benjamin', 'Esparza', 'mistymatthews@example.org', '+1-620-556-2019x01134', '133 Michael Path', 'Mosesville', 'WY', '28639');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Eric', 'Quinn', 'matthew64@example.com', '(934)828-6449', '49866 Joseph Summit', 'Lake Lisastad', 'IA', '57814');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Karen', 'Fields', 'pweber@example.com', '+1-898-752-9735x61526', '147 Horne Land Apt. 809', 'Butlerville', 'KY', '62462');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Kirsten', 'Wood', 'richardperkins@example.com', '(547)846-6535', '985 Eric Flats', 'Snydershire', 'FL', '39535');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Dakota', 'Wells', 'danielleboyer@example.net', '(238)835-4346x85863', '8249 Lawrence Freeway', 'South Colebury', 'TX', '66049');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Christopher', 'Long', 'heatherdavis@example.org', '2733726072', '967 Angela Dam Suite 493', 'East Tiffanyport', 'MO', '26251');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Brittany', 'Evans', 'usanders@example.net', '929-426-4563x391', '36948 Victoria Creek Apt. 664', 'Davischester', 'NV', '88612');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Anthony', 'Fleming', 'jefferywalker@example.org', '8165125901', '901 Jeremy Groves Suite 376', 'Douglasborough', 'TX', '36366');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Amanda', 'Garcia', 'petersenamy@example.net', '310-316-7930x148', '49910 Melinda Shoal Apt. 028', 'Castanedaville', 'MO', '71842');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Yvette', 'Adkins', 'waltercarrie@example.org', '721-534-8548x4203', '0791 Hood Ramp', 'East Samanthafurt', 'AR', '10965');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Mario', 'Castillo', 'gibbsdarren@example.org', '001-319-640-2470x288', '28745 Regina Square', 'Port Sarahborough', 'NE', '62948');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Melinda', 'Richardson', 'bphillips@example.org', '+1-613-481-0749x161', '215 Wiley Club', 'North Samantha', 'IL', '43950');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Brett', 'Carlson', 'lchurch@example.com', '968-645-5252', '25471 Silva Ranch', 'Abigailstad', 'NE', '51675');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Cassandra', 'Hunter', 'tinajohnson@example.org', '001-656-475-6355', '1726 Anderson Shoal', 'Richardtown', 'KS', '50672');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Morgan', 'Alvarez', 'millermichele@example.net', '313-206-8624x087', '668 Emily Unions', 'South Derekberg', 'AL', '62329');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Rickey', 'Lee', 'martinezmolly@example.net', '(423)628-2228', '475 Alicia Knolls', 'Anthonyview', 'CO', '05614');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jessica', 'Spencer', 'hjacobs@example.org', '(411)235-0535x722', '1578 Carol Mountain Apt. 028', 'Port Charlesport', 'CT', '82035');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Keith', 'Delacruz', 'john19@example.com', '001-428-314-4786x74280', '63578 Emily Forks', 'Grantville', 'TN', '19625');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Connor', 'Holloway', 'pking@example.net', '(699)205-5855x7599', '90696 Hannah Knolls Apt. 898', 'Smithland', 'VA', '06854');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Paul', 'Fisher', 'jesusavila@example.com', '301.665.2761x368', '53084 Timothy Locks', 'Lake Chloe', 'MO', '39266');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Joseph', 'Stevens', 'lheath@example.com', '6842232423', '1724 Jennifer Junctions', 'Port Raymond', 'CT', '43443');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Amanda', 'Stewart', 'meghan90@example.com', '(979)260-2425', '32959 Howard Forges', 'West Danielleberg', 'NC', '51209');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jeremy', 'Ramirez', 'cassielong@example.net', '+1-291-672-1742x922', '7821 Cohen Ramp', 'South Patrick', 'IL', '62739');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Michele', 'Flowers', 'iwalker@example.com', '001-403-213-9280x48502', '90193 Jason River Apt. 797', 'New Bryanton', 'SD', '03342');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Ivan', 'Perkins', 'russell62@example.org', '464-571-8559x40799', '5323 Suzanne Run', 'Owensside', 'WI', '10392');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Justin', 'Bennett', 'pgross@example.com', '9199453911', '6505 Donna Rue Suite 120', 'New Christopher', 'UT', '85436');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Manuel', 'Kelley', 'zbates@example.net', '+1-802-923-1167x870', '53223 Martinez Knolls Apt. 126', 'Deborahstad', 'MT', '29424');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Rhonda', 'Miller', 'megan94@example.org', '4005375398', '24659 James Fords', 'South Kari', 'ND', '94034');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jonathan', 'Henry', 'lauriecrawford@example.com', '001-615-238-2011', '2664 Ryan Way Apt. 512', 'Whiteview', 'MD', '45776');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jeffrey', 'Morton', 'tracydavenport@example.net', '(456)497-6487x8496', '451 Kurt Road Apt. 506', 'New Robert', 'MS', '70471');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Sarah', 'Trevino', 'lorettabrown@example.com', '001-627-667-2935x09793', '29146 Santana Ferry', 'Port James', 'MH', '65175');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Steven', 'Riggs', 'mitchellmichael@example.com', '001-497-325-1840x7033', '8233 Brewer Drives Apt. 945', 'Lake Sandrafort', 'MO', '96163');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Sean', 'Foster', 'qmccoy@example.org', '463.801.1220x08484', '333 Sweeney Spring Suite 082', 'Jimenezland', 'UT', '27612');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Patrick', 'Christian', 'catherine46@example.net', '(508)456-4901', '519 Neil Views Apt. 115', 'Peterfort', 'MI', '70047');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jennifer', 'Kline', 'fernandezbrandon@example.net', '001-789-804-4104x0431', '513 Lee Roads Apt. 483', 'Collinsmouth', 'MI', '66782');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Brendan', 'Williams', 'garciarichard@example.com', '(947)317-7840x1902', '883 Miles Mews Apt. 158', 'Colemanhaven', 'NE', '15288');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Christopher', 'Duncan', 'lgonzales@example.net', '001-583-732-6170x505', '5819 Henderson Mill', 'New Mike', 'MN', '31881');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Vanessa', 'Lane', 'justinhughes@example.net', '(617)875-8015', '793 Lisa Trail Apt. 028', 'Jamesmouth', 'HI', '63283');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Karen', 'Jordan', 'jonathanjones@example.com', '001-902-552-8546x1308', '972 Danielle Track', 'New Michelle', 'PR', '22379');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Stephanie', 'Leon', 'vbryant@example.org', '584-225-2786', '71210 Jennifer Harbors', 'East Kenneth', 'LA', '64576');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jay', 'Byrd', 'baileydonna@example.net', '+1-877-719-6199x71659', '7640 Warren Freeway Apt. 440', 'New Jenniferberg', 'GA', '37404');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Sierra', 'Downs', 'xfleming@example.org', '001-279-732-2191x43907', '3601 Vasquez Route Apt. 150', 'North Chadberg', 'MT', '01669');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Anthony', 'Johnson', 'kbailey@example.net', '747.659.7833', '7192 Justin Lodge', 'Hudsonview', 'MS', '32281');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Tara', 'Page', 'ymercer@example.com', '+1-632-803-1726x65282', '9272 Smith Valleys Apt. 208', 'Beckland', 'ME', '87865');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Julie', 'Tyler', 'christopher08@example.com', '532-871-6303x356', '10009 Alicia Ranch', 'North Angela', 'NC', '15437');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Jessica', 'Pacheco', 'melissa80@example.org', '635.541.5892x90930', '6136 Jackson Row Apt. 812', 'Lake Cynthia', 'NC', '09253');
+INSERT INTO Users (first_name, last_name, email, phone, address_line, city, state, zip_code) VALUES ('Michael', 'Riggs', 'kimberly47@example.org', '(931)510-5833x096', '842 Angela Crossing Suite 269', 'South Yolanda', 'VA', '47159');
 
 -- Coupons
 INSERT INTO coupons (code, description, discount_type, discount_value, valid_from, valid_to, usage_limit) VALUES ('SAVE10', 'If magazine look term.', 'Fixed', 14.84, '2026-07-19', '2026-08-23', 27);
@@ -369,7 +369,7 @@ Down capital them a job available. Eye area parent. May grow present other leave
 INSERT INTO products (product_id, name, description, price, cost, category_id, supplier_id) VALUES (66, 'The Very Hungry Caterpillar 23', 'Store modern newspaper Mrs debate exactly wind. Prevent history during mission imagine meet.', 287.0, 133.38, 16, 20);
 INSERT INTO products (product_id, name, description, price, cost, category_id, supplier_id) VALUES (67, 'Dune 51', 'Right work both. Language place leader goal executive.
 Development right sit where develop shoulder page. Set once write he political get exist. Daughter left bag hold enjoy along itself.', 891.33, 489.49, 13, 8);
-INSERT INTO products (product_id, name, description, price, cost, category_id, supplier_id) VALUES (68, 'Motorola Edge 35', 'Open chair rest care more. Investment serve degree side region lot. Adult customer her reach loss.', 898.67, 367.65, 2, 10);
+INSERT INTO products (product_id, name, description, price, cost, category_id, supplier_id) VALUES (68, 'Motorola Edge 35', 'Open chair rest care more. Investment serve degree side region lot. Adult user her reach loss.', 898.67, 367.65, 2, 10);
 INSERT INTO products (product_id, name, description, price, cost, category_id, supplier_id) VALUES (69, 'Office Chair 63', 'Truth successful nothing many piece down member career. Best Democrat dark soldier example moment. Agree oil fact fine.', 860.49, 609.38, 10, 8);
 INSERT INTO products (product_id, name, description, price, cost, category_id, supplier_id) VALUES (70, 'Polo Shirt 96', 'Place argue coach economic can to. Although him life table wish. Continue bad hard nor.
 Bill might pick sign medical.
@@ -439,7 +439,7 @@ Action support through. Quality energy fine style quality. Where instead all inc
 INSERT INTO products (product_id, name, description, price, cost, category_id, supplier_id) VALUES (108, 'Drone 94', 'Lead study culture idea again. Make memory leave your unit hand issue.', 260.83, 185.73, 1, 12);
 INSERT INTO products (product_id, name, description, price, cost, category_id, supplier_id) VALUES (109, 'Dining Table 14', 'Century usually wall thus similar population. Clearly service hour finish them particular report.
 Strategy hear far fast chance. American southern career piece share.', 393.4, 261.57, 10, 6);
-INSERT INTO products (product_id, name, description, price, cost, category_id, supplier_id) VALUES (110, 'MacBook Pro 16 39', 'Say common customer. Do popular some against economy compare.
+INSERT INTO products (product_id, name, description, price, cost, category_id, supplier_id) VALUES (110, 'MacBook Pro 16 39', 'Say common user. Do popular some against economy compare.
 Top gun store clearly long first nothing. Executive stage part.
 Carry treat door child. Image beat tonight beautiful whom.', 949.28, 574.47, 3, 17);
 INSERT INTO products (product_id, name, description, price, cost, category_id, supplier_id) VALUES (111, 'Rugby Ball 44', 'Natural beautiful management face campaign should. Ago close beat receive. Maybe yes always face teacher.', 442.72, 313.91, 20, 5);
@@ -464,7 +464,7 @@ INSERT INTO products (product_id, name, description, price, cost, category_id, s
 Another early minute article place sell indicate.', 341.3, 136.94, 7, 22);
 INSERT INTO products (product_id, name, description, price, cost, category_id, supplier_id) VALUES (124, 'Dell XPS 15 74', 'Sometimes pull especially future first card likely. Quality bed our civil bill young.
 Live glass teacher southern create free car. Article join conference particularly.', 674.31, 314.98, 3, 3);
-INSERT INTO products (product_id, name, description, price, cost, category_id, supplier_id) VALUES (125, 'Basketball 93', 'Yourself left simple. Simply always high friend item. Chair chance let seat happy by. Customer set offer work artist sometimes subject.
+INSERT INTO products (product_id, name, description, price, cost, category_id, supplier_id) VALUES (125, 'Basketball 93', 'Yourself left simple. Simply always high friend item. Chair chance let seat happy by. user set offer work artist sometimes subject.
 Rich short over decade carry its. Year can mouth great hundred.', 727.99, 587.6, 17, 21);
 INSERT INTO products (product_id, name, description, price, cost, category_id, supplier_id) VALUES (126, 'Loafers 38', 'Fine pressure economy to daughter knowledge environment course. Radio place Mr specific decision. Happen play why campaign population.', 275.89, 116.57, 8, 6);
 INSERT INTO products (product_id, name, description, price, cost, category_id, supplier_id) VALUES (127, 'Xiaomi 14 47', 'Less protect itself air deal. Pick late positive yard. Investment more pattern enjoy which moment new player.', 804.76, 435.15, 2, 24);
@@ -684,206 +684,206 @@ INSERT INTO products (product_id, name, description, price, cost, category_id, s
 Real nothing daughter perhaps. Relationship Congress sell drug cold above business.', 147.73, 90.81, 19, 8);
 
 -- Orders
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (1, 22, 9, '2026-03-26 03:06:09', 'Delivered', 2472.56);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (2, 140, 13, '2026-04-06 20:25:04', 'Shipped', 1393.58);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (3, 2, NULL, '2026-07-18 01:05:55', 'Delivered', 3061.75);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (4, 31, NULL, '2026-08-17 13:22:29', 'Shipped', 5349.44);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (5, 53, 10, '2026-07-10 22:39:50', 'Delivered', 2742.55);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (6, 28, 4, '2026-06-20 17:52:07', 'Delivered', 2673.2);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (7, 150, 8, '2026-04-06 12:32:57', 'Shipped', 2052.85);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (8, 138, 13, '2026-03-19 06:28:57', 'Delivered', 3604.12);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (9, 71, 12, '2026-04-23 05:51:21', 'Delivered', 4163.32);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (10, 106, 15, '2026-08-26 04:47:37', 'Paid', 4059.28);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (11, 144, 15, '2026-06-16 18:48:15', 'Shipped', 4103.61);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (12, 79, 11, '2026-09-06 03:00:41', 'Delivered', 3540.78);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (13, 102, 4, '2026-06-01 04:01:19', 'Delivered', 2698.12);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (14, 31, 7, '2026-08-04 22:51:35', 'Delivered', 2057.07);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (15, 42, 3, '2026-04-30 19:55:55', 'Shipped', 1566.77);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (16, 103, 10, '2026-05-16 14:49:13', 'Delivered', 1403.66);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (17, 14, 5, '2026-07-03 15:04:05', 'Shipped', 5765.95);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (18, 2, 2, '2026-08-23 17:31:09', 'Delivered', 6996.22);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (19, 121, 13, '2026-04-25 03:28:03', 'Paid', 1685.65);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (20, 68, 7, '2026-08-10 17:40:35', 'Shipped', 1117.44);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (21, 10, 12, '2026-04-19 22:07:55', 'Delivered', 4491.18);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (22, 103, 9, '2026-03-15 14:18:43', 'Delivered', 1509.97);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (23, 15, 5, '2026-05-31 02:04:53', 'Delivered', 4702.05);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (24, 113, NULL, '2026-06-16 15:20:27', 'Shipped', 2188.71);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (25, 133, 9, '2026-04-02 04:49:41', 'Paid', 1261.4);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (26, 131, 7, '2026-08-17 04:59:36', 'Delivered', 4903.16);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (27, 10, 11, '2026-04-12 19:38:11', 'Shipped', 1401.77);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (28, 1, 5, '2026-07-27 23:53:49', 'Paid', 2862.74);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (29, 71, 12, '2026-06-06 06:00:35', 'Shipped', 4124.25);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (30, 102, 12, '2026-08-27 10:48:34', 'Delivered', 2073.19);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (31, 133, NULL, '2026-05-20 07:18:30', 'Delivered', 3227.3);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (32, 18, 2, '2026-05-13 18:03:16', 'Delivered', 1507.33);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (33, 144, 11, '2026-08-18 17:50:50', 'Shipped', 4240.06);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (34, 71, 7, '2026-03-24 19:25:48', 'Delivered', 866.68);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (35, 50, 14, '2026-08-26 11:32:17', 'Delivered', 1486.63);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (36, 148, NULL, '2026-05-02 23:43:10', 'Shipped', 4253.04);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (37, 105, 3, '2026-08-11 17:43:33', 'Delivered', 2455.5);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (38, 129, 9, '2026-06-07 01:20:46', 'Shipped', 1921.77);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (39, 30, 8, '2026-04-28 20:11:07', 'Delivered', 2583.83);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (40, 148, 8, '2026-05-17 16:35:46', 'Delivered', 3252.09);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (41, 97, 15, '2026-07-16 06:03:56', 'Delivered', 1849.52);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (42, 87, 14, '2026-05-07 21:57:44', 'Delivered', 2963.85);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (43, 8, 15, '2026-04-23 11:05:09', 'Paid', 633.82);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (44, 18, 12, '2026-05-16 09:58:15', 'Delivered', 5955.64);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (45, 57, 7, '2026-04-14 05:58:56', 'Delivered', 1132.6);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (46, 106, 11, '2026-06-01 01:49:30', 'Delivered', 2786.01);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (47, 3, 8, '2026-05-06 08:15:49', 'Shipped', 4354.64);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (48, 24, 12, '2026-08-05 11:32:19', 'Delivered', 3986.62);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (49, 88, 2, '2026-07-13 06:57:11', 'Delivered', 941.76);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (50, 46, 15, '2026-08-31 02:35:17', 'Shipped', 884.4);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (51, 56, 8, '2026-06-14 12:59:06', 'Paid', 3916.16);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (52, 49, 15, '2026-04-08 13:58:56', 'Delivered', 2017.28);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (53, 61, 7, '2026-08-14 08:32:43', 'Delivered', 5916.01);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (54, 53, 7, '2026-04-07 08:56:56', 'Shipped', 1175.27);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (55, 64, 11, '2026-05-27 17:32:02', 'Paid', 3488.31);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (56, 28, 3, '2026-08-12 02:49:27', 'Delivered', 5026.08);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (57, 127, NULL, '2026-06-29 21:38:07', 'Delivered', 4257.9);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (58, 139, 1, '2026-09-03 08:22:36', 'Delivered', 3359.27);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (59, 96, 10, '2026-07-18 13:24:50', 'Delivered', 1249.67);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (60, 148, 8, '2026-08-07 05:03:13', 'Delivered', 3712.84);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (61, 131, 8, '2026-05-18 00:25:26', 'Shipped', 5011.57);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (62, 148, 4, '2026-04-01 00:35:36', 'Paid', 1159.03);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (63, 109, 15, '2026-08-26 20:27:04', 'Delivered', 3647.92);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (64, 9, 11, '2026-08-07 16:07:26', 'Shipped', 4842.66);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (65, 45, 14, '2026-05-08 21:43:11', 'Cancelled', 2838.68);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (66, 133, 14, '2026-05-30 03:56:20', 'Shipped', 1357.86);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (67, 3, NULL, '2026-08-21 00:45:18', 'Delivered', 4389.23);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (68, 98, 3, '2026-08-01 23:39:48', 'Shipped', 2737.51);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (69, 67, 5, '2026-06-19 02:00:49', 'Delivered', 1890.65);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (70, 61, 8, '2026-05-14 05:47:03', 'Delivered', 800.29);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (71, 88, 11, '2026-05-09 19:43:12', 'Paid', 5379.05);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (72, 109, 6, '2026-05-29 06:31:49', 'Delivered', 3672.26);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (73, 96, 11, '2026-07-23 17:58:12', 'Delivered', 856.85);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (74, 72, 14, '2026-06-10 06:19:51', 'Paid', 3830.51);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (75, 34, 7, '2026-03-19 22:30:00', 'Delivered', 2564.53);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (76, 70, 7, '2026-05-18 13:15:00', 'Delivered', 4483.53);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (77, 98, 6, '2026-07-10 05:55:39', 'Paid', 7212.69);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (78, 39, 15, '2026-07-26 10:14:31', 'Delivered', 1920.35);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (79, 46, 13, '2026-08-12 14:51:51', 'Delivered', 2800.74);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (80, 133, 10, '2026-06-17 00:48:55', 'Delivered', 6849.34);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (81, 77, 8, '2026-09-03 23:07:28', 'Delivered', 5421.5);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (82, 146, 1, '2026-06-19 06:58:55', 'Shipped', 3166.86);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (83, 42, 1, '2026-06-11 23:37:39', 'Shipped', 1260.57);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (84, 66, 15, '2026-04-19 23:26:50', 'Delivered', 3922.68);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (85, 25, 14, '2026-03-25 10:50:15', 'Delivered', 2307.53);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (86, 67, 11, '2026-06-26 04:25:22', 'Shipped', 4651.52);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (87, 143, 8, '2026-04-28 21:58:14', 'Shipped', 587.38);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (88, 106, 3, '2026-05-10 12:19:33', 'Shipped', 2957.18);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (89, 51, 5, '2026-03-24 03:49:36', 'Cancelled', 3989.1);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (90, 73, 11, '2026-07-27 22:56:38', 'Shipped', 5605.99);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (91, 131, 15, '2026-05-09 20:53:31', 'Delivered', 3165.13);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (92, 115, 2, '2026-08-31 19:35:35', 'Shipped', 788.6);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (93, 74, 14, '2026-03-22 13:19:40', 'Delivered', 2421.99);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (94, 38, 5, '2026-08-26 04:14:34', 'Delivered', 2871.25);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (95, 87, 13, '2026-05-06 02:51:00', 'Delivered', 6235.9);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (96, 147, 12, '2026-07-25 11:05:01', 'Delivered', 1682.05);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (97, 19, 2, '2026-05-14 04:50:59', 'Paid', 3704.24);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (98, 59, 10, '2026-04-18 18:12:32', 'Shipped', 1411.66);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (99, 75, 8, '2026-04-25 15:38:26', 'Delivered', 4178.03);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (100, 102, 8, '2026-04-19 10:42:13', 'Delivered', 2085.9);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (101, 93, 14, '2026-06-18 13:12:02', 'Delivered', 2511.99);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (102, 48, NULL, '2026-04-09 09:28:47', 'Paid', 3332.82);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (103, 61, 8, '2026-05-06 09:08:56', 'Delivered', 1282.24);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (104, 21, 6, '2026-09-04 03:30:13', 'Paid', 3661.68);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (105, 27, 3, '2026-05-16 23:38:58', 'Paid', 4059.99);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (106, 122, 1, '2026-05-02 11:09:33', 'Pending', 937.32);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (107, 102, 2, '2026-05-10 01:08:50', 'Paid', 1780.67);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (108, 40, 2, '2026-03-22 21:51:49', 'Delivered', 3976.9);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (109, 100, 9, '2026-03-27 03:31:46', 'Shipped', 4105.46);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (110, 73, 14, '2026-08-15 16:58:20', 'Delivered', 800.65);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (111, 34, 5, '2026-08-17 13:05:53', 'Pending', 2857.92);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (112, 92, 10, '2026-07-21 07:23:08', 'Delivered', 2429.4);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (113, 120, 8, '2026-08-13 20:16:47', 'Delivered', 5202.79);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (114, 35, 5, '2026-08-29 04:56:11', 'Delivered', 163.96);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (115, 117, 13, '2026-07-06 02:20:53', 'Delivered', 6638.28);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (116, 137, 9, '2026-05-24 16:49:04', 'Delivered', 2000.62);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (117, 124, 7, '2026-06-17 15:19:01', 'Delivered', 3479.59);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (118, 114, 9, '2026-03-14 14:58:10', 'Shipped', 3078.12);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (119, 67, 4, '2026-07-06 10:25:08', 'Shipped', 1967.98);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (120, 1, 4, '2026-08-05 00:01:52', 'Shipped', 1354.64);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (121, 121, NULL, '2026-09-02 08:04:06', 'Delivered', 7331.23);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (122, 126, 15, '2026-09-08 10:19:33', 'Shipped', 3382.64);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (123, 111, 9, '2026-07-24 06:44:40', 'Delivered', 3532.23);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (124, 2, 11, '2026-08-23 16:52:25', 'Paid', 268.15);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (125, 144, 13, '2026-06-04 18:45:05', 'Shipped', 4531.78);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (126, 42, 12, '2026-05-20 05:16:56', 'Delivered', 1558.95);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (127, 57, 8, '2026-07-10 23:31:35', 'Paid', 2579.2);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (128, 62, 8, '2026-07-25 19:16:19', 'Shipped', 2942.27);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (129, 137, 8, '2026-05-22 09:45:37', 'Delivered', 873.85);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (130, 18, 5, '2026-04-11 04:34:16', 'Paid', 4164.89);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (131, 29, 14, '2026-08-27 14:30:49', 'Delivered', 2128.8);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (132, 70, 15, '2026-06-13 06:55:18', 'Paid', 4920.42);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (133, 5, 4, '2026-07-05 00:17:43', 'Pending', 3814.28);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (134, 137, NULL, '2026-06-25 15:57:03', 'Paid', 3797.08);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (135, 27, 9, '2026-06-04 13:09:38', 'Shipped', 2630.89);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (136, 113, NULL, '2026-07-23 17:08:25', 'Shipped', 4201.17);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (137, 39, NULL, '2026-06-07 21:58:52', 'Delivered', 5727.16);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (138, 88, 13, '2026-07-21 11:09:05', 'Shipped', 3194.45);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (139, 128, 11, '2026-04-14 15:20:09', 'Delivered', 1274.55);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (140, 9, 10, '2026-08-20 20:55:18', 'Paid', 1071.28);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (141, 38, 1, '2026-04-21 01:43:06', 'Shipped', 4064.67);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (142, 101, 2, '2026-06-05 18:06:14', 'Delivered', 6353.59);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (143, 47, 6, '2026-04-19 21:42:55', 'Delivered', 731.83);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (144, 65, 12, '2026-06-21 10:26:47', 'Delivered', 2453.44);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (145, 32, 7, '2026-07-08 12:36:05', 'Shipped', 2348.48);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (146, 114, 7, '2026-05-02 12:04:42', 'Delivered', 2950.78);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (147, 9, 6, '2026-06-22 02:40:38', 'Delivered', 3176.28);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (148, 25, 6, '2026-06-01 03:58:35', 'Delivered', 1583.51);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (149, 80, 10, '2026-08-16 21:51:14', 'Paid', 912.36);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (150, 11, 3, '2026-04-15 15:20:40', 'Shipped', 2305.96);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (151, 77, 6, '2026-06-16 01:16:45', 'Shipped', 6342.54);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (152, 14, 6, '2026-06-24 00:10:20', 'Cancelled', 3832.87);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (153, 61, 13, '2026-08-16 11:17:03', 'Shipped', 4286.17);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (154, 43, 8, '2026-08-25 12:06:55', 'Delivered', 5180.58);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (155, 102, 7, '2026-08-03 15:19:00', 'Pending', 6115.67);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (156, 11, 15, '2026-04-10 04:00:00', 'Delivered', 4441.62);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (157, 40, 11, '2026-07-21 13:35:31', 'Delivered', 3514.52);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (158, 64, 5, '2026-08-31 12:28:18', 'Delivered', 2076.3);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (159, 87, 1, '2026-03-29 12:19:14', 'Paid', 918.95);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (160, 40, 3, '2026-08-03 05:12:29', 'Paid', 2107.69);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (161, 60, 10, '2026-09-02 14:32:17', 'Cancelled', 5345.75);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (162, 89, 14, '2026-08-28 05:34:27', 'Delivered', 804.41);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (163, 6, 12, '2026-07-17 13:39:40', 'Shipped', 1809.9);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (164, 35, 8, '2026-04-07 08:57:27', 'Delivered', 3410.33);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (165, 125, 14, '2026-07-26 22:10:18', 'Delivered', 1491.32);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (166, 139, 15, '2026-03-13 10:32:40', 'Paid', 2765.3);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (167, 48, 11, '2026-08-29 06:58:00', 'Shipped', 1004.22);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (168, 120, 8, '2026-09-09 01:22:57', 'Delivered', 3840.9);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (169, 142, 5, '2026-05-22 18:43:09', 'Paid', 817.04);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (170, 40, 14, '2026-05-14 23:55:21', 'Shipped', 1190.93);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (171, 68, 11, '2026-07-14 14:24:14', 'Delivered', 3354.62);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (172, 130, 12, '2026-04-27 09:22:33', 'Delivered', 4152.23);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (173, 5, 11, '2026-07-23 02:03:18', 'Delivered', 1277.52);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (174, 62, 10, '2026-08-24 07:43:48', 'Delivered', 2828.31);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (175, 138, 12, '2026-05-17 03:49:10', 'Paid', 3085.3);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (176, 128, 4, '2026-05-13 18:34:58', 'Delivered', 2800.82);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (177, 83, 13, '2026-05-02 08:10:16', 'Delivered', 522.14);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (178, 29, 3, '2026-08-12 01:26:10', 'Delivered', 2105.31);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (179, 18, 1, '2026-07-01 14:07:27', 'Delivered', 1530.87);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (180, 34, 5, '2026-05-09 13:22:20', 'Delivered', 2585.15);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (181, 52, 3, '2026-08-21 19:42:13', 'Delivered', 3885.5);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (182, 26, 1, '2026-08-20 01:41:45', 'Delivered', 2748.68);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (183, 100, 15, '2026-08-25 04:54:22', 'Delivered', 1689.58);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (184, 66, 1, '2026-03-28 15:51:06', 'Shipped', 3110.43);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (185, 19, NULL, '2026-07-29 02:40:49', 'Delivered', 5215.56);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (186, 54, 15, '2026-03-22 11:21:49', 'Delivered', 3835.65);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (187, 21, 14, '2026-04-24 01:36:49', 'Delivered', 1756.96);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (188, 16, 11, '2026-05-24 16:25:22', 'Delivered', 3725.41);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (189, 107, 11, '2026-03-18 07:14:37', 'Delivered', 3218.67);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (190, 15, 8, '2026-08-23 02:06:27', 'Delivered', 3991.74);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (191, 19, 9, '2026-04-10 19:06:15', 'Paid', 354.78);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (192, 56, 3, '2026-04-09 09:11:20', 'Paid', 3118.23);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (193, 60, 12, '2026-06-06 17:39:01', 'Paid', 974.4);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (194, 135, 7, '2026-05-11 00:18:11', 'Delivered', 6239.34);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (195, 46, 13, '2026-05-06 18:16:10', 'Delivered', 1806.58);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (196, 148, 11, '2026-07-01 11:46:44', 'Delivered', 1078.13);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (197, 110, 3, '2026-05-07 18:24:21', 'Paid', 6859.85);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (198, 47, 12, '2026-06-01 16:24:14', 'Delivered', 3717.6);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (199, 41, 14, '2026-08-06 15:53:13', 'Delivered', 2667.24);
-INSERT INTO orders (order_id, customer_id, coupon_id, order_date, status, total_amount) VALUES (200, 81, 10, '2026-06-19 15:54:47', 'Delivered', 1872.9);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (1, 22, 9, '2026-03-26 03:06:09', 'Delivered', 2472.56);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (2, 140, 13, '2026-04-06 20:25:04', 'Shipped', 1393.58);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (3, 2, NULL, '2026-07-18 01:05:55', 'Delivered', 3061.75);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (4, 31, NULL, '2026-08-17 13:22:29', 'Shipped', 5349.44);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (5, 53, 10, '2026-07-10 22:39:50', 'Delivered', 2742.55);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (6, 28, 4, '2026-06-20 17:52:07', 'Delivered', 2673.2);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (7, 150, 8, '2026-04-06 12:32:57', 'Shipped', 2052.85);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (8, 138, 13, '2026-03-19 06:28:57', 'Delivered', 3604.12);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (9, 71, 12, '2026-04-23 05:51:21', 'Delivered', 4163.32);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (10, 106, 15, '2026-08-26 04:47:37', 'Paid', 4059.28);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (11, 144, 15, '2026-06-16 18:48:15', 'Shipped', 4103.61);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (12, 79, 11, '2026-09-06 03:00:41', 'Delivered', 3540.78);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (13, 102, 4, '2026-06-01 04:01:19', 'Delivered', 2698.12);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (14, 31, 7, '2026-08-04 22:51:35', 'Delivered', 2057.07);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (15, 42, 3, '2026-04-30 19:55:55', 'Shipped', 1566.77);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (16, 103, 10, '2026-05-16 14:49:13', 'Delivered', 1403.66);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (17, 14, 5, '2026-07-03 15:04:05', 'Shipped', 5765.95);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (18, 2, 2, '2026-08-23 17:31:09', 'Delivered', 6996.22);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (19, 121, 13, '2026-04-25 03:28:03', 'Paid', 1685.65);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (20, 68, 7, '2026-08-10 17:40:35', 'Shipped', 1117.44);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (21, 10, 12, '2026-04-19 22:07:55', 'Delivered', 4491.18);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (22, 103, 9, '2026-03-15 14:18:43', 'Delivered', 1509.97);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (23, 15, 5, '2026-05-31 02:04:53', 'Delivered', 4702.05);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (24, 113, NULL, '2026-06-16 15:20:27', 'Shipped', 2188.71);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (25, 133, 9, '2026-04-02 04:49:41', 'Paid', 1261.4);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (26, 131, 7, '2026-08-17 04:59:36', 'Delivered', 4903.16);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (27, 10, 11, '2026-04-12 19:38:11', 'Shipped', 1401.77);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (28, 1, 5, '2026-07-27 23:53:49', 'Paid', 2862.74);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (29, 71, 12, '2026-06-06 06:00:35', 'Shipped', 4124.25);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (30, 102, 12, '2026-08-27 10:48:34', 'Delivered', 2073.19);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (31, 133, NULL, '2026-05-20 07:18:30', 'Delivered', 3227.3);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (32, 18, 2, '2026-05-13 18:03:16', 'Delivered', 1507.33);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (33, 144, 11, '2026-08-18 17:50:50', 'Shipped', 4240.06);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (34, 71, 7, '2026-03-24 19:25:48', 'Delivered', 866.68);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (35, 50, 14, '2026-08-26 11:32:17', 'Delivered', 1486.63);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (36, 148, NULL, '2026-05-02 23:43:10', 'Shipped', 4253.04);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (37, 105, 3, '2026-08-11 17:43:33', 'Delivered', 2455.5);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (38, 129, 9, '2026-06-07 01:20:46', 'Shipped', 1921.77);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (39, 30, 8, '2026-04-28 20:11:07', 'Delivered', 2583.83);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (40, 148, 8, '2026-05-17 16:35:46', 'Delivered', 3252.09);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (41, 97, 15, '2026-07-16 06:03:56', 'Delivered', 1849.52);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (42, 87, 14, '2026-05-07 21:57:44', 'Delivered', 2963.85);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (43, 8, 15, '2026-04-23 11:05:09', 'Paid', 633.82);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (44, 18, 12, '2026-05-16 09:58:15', 'Delivered', 5955.64);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (45, 57, 7, '2026-04-14 05:58:56', 'Delivered', 1132.6);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (46, 106, 11, '2026-06-01 01:49:30', 'Delivered', 2786.01);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (47, 3, 8, '2026-05-06 08:15:49', 'Shipped', 4354.64);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (48, 24, 12, '2026-08-05 11:32:19', 'Delivered', 3986.62);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (49, 88, 2, '2026-07-13 06:57:11', 'Delivered', 941.76);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (50, 46, 15, '2026-08-31 02:35:17', 'Shipped', 884.4);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (51, 56, 8, '2026-06-14 12:59:06', 'Paid', 3916.16);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (52, 49, 15, '2026-04-08 13:58:56', 'Delivered', 2017.28);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (53, 61, 7, '2026-08-14 08:32:43', 'Delivered', 5916.01);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (54, 53, 7, '2026-04-07 08:56:56', 'Shipped', 1175.27);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (55, 64, 11, '2026-05-27 17:32:02', 'Paid', 3488.31);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (56, 28, 3, '2026-08-12 02:49:27', 'Delivered', 5026.08);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (57, 127, NULL, '2026-06-29 21:38:07', 'Delivered', 4257.9);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (58, 139, 1, '2026-09-03 08:22:36', 'Delivered', 3359.27);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (59, 96, 10, '2026-07-18 13:24:50', 'Delivered', 1249.67);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (60, 148, 8, '2026-08-07 05:03:13', 'Delivered', 3712.84);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (61, 131, 8, '2026-05-18 00:25:26', 'Shipped', 5011.57);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (62, 148, 4, '2026-04-01 00:35:36', 'Paid', 1159.03);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (63, 109, 15, '2026-08-26 20:27:04', 'Delivered', 3647.92);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (64, 9, 11, '2026-08-07 16:07:26', 'Shipped', 4842.66);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (65, 45, 14, '2026-05-08 21:43:11', 'Cancelled', 2838.68);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (66, 133, 14, '2026-05-30 03:56:20', 'Shipped', 1357.86);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (67, 3, NULL, '2026-08-21 00:45:18', 'Delivered', 4389.23);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (68, 98, 3, '2026-08-01 23:39:48', 'Shipped', 2737.51);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (69, 67, 5, '2026-06-19 02:00:49', 'Delivered', 1890.65);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (70, 61, 8, '2026-05-14 05:47:03', 'Delivered', 800.29);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (71, 88, 11, '2026-05-09 19:43:12', 'Paid', 5379.05);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (72, 109, 6, '2026-05-29 06:31:49', 'Delivered', 3672.26);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (73, 96, 11, '2026-07-23 17:58:12', 'Delivered', 856.85);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (74, 72, 14, '2026-06-10 06:19:51', 'Paid', 3830.51);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (75, 34, 7, '2026-03-19 22:30:00', 'Delivered', 2564.53);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (76, 70, 7, '2026-05-18 13:15:00', 'Delivered', 4483.53);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (77, 98, 6, '2026-07-10 05:55:39', 'Paid', 7212.69);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (78, 39, 15, '2026-07-26 10:14:31', 'Delivered', 1920.35);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (79, 46, 13, '2026-08-12 14:51:51', 'Delivered', 2800.74);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (80, 133, 10, '2026-06-17 00:48:55', 'Delivered', 6849.34);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (81, 77, 8, '2026-09-03 23:07:28', 'Delivered', 5421.5);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (82, 146, 1, '2026-06-19 06:58:55', 'Shipped', 3166.86);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (83, 42, 1, '2026-06-11 23:37:39', 'Shipped', 1260.57);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (84, 66, 15, '2026-04-19 23:26:50', 'Delivered', 3922.68);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (85, 25, 14, '2026-03-25 10:50:15', 'Delivered', 2307.53);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (86, 67, 11, '2026-06-26 04:25:22', 'Shipped', 4651.52);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (87, 143, 8, '2026-04-28 21:58:14', 'Shipped', 587.38);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (88, 106, 3, '2026-05-10 12:19:33', 'Shipped', 2957.18);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (89, 51, 5, '2026-03-24 03:49:36', 'Cancelled', 3989.1);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (90, 73, 11, '2026-07-27 22:56:38', 'Shipped', 5605.99);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (91, 131, 15, '2026-05-09 20:53:31', 'Delivered', 3165.13);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (92, 115, 2, '2026-08-31 19:35:35', 'Shipped', 788.6);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (93, 74, 14, '2026-03-22 13:19:40', 'Delivered', 2421.99);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (94, 38, 5, '2026-08-26 04:14:34', 'Delivered', 2871.25);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (95, 87, 13, '2026-05-06 02:51:00', 'Delivered', 6235.9);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (96, 147, 12, '2026-07-25 11:05:01', 'Delivered', 1682.05);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (97, 19, 2, '2026-05-14 04:50:59', 'Paid', 3704.24);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (98, 59, 10, '2026-04-18 18:12:32', 'Shipped', 1411.66);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (99, 75, 8, '2026-04-25 15:38:26', 'Delivered', 4178.03);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (100, 102, 8, '2026-04-19 10:42:13', 'Delivered', 2085.9);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (101, 93, 14, '2026-06-18 13:12:02', 'Delivered', 2511.99);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (102, 48, NULL, '2026-04-09 09:28:47', 'Paid', 3332.82);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (103, 61, 8, '2026-05-06 09:08:56', 'Delivered', 1282.24);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (104, 21, 6, '2026-09-04 03:30:13', 'Paid', 3661.68);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (105, 27, 3, '2026-05-16 23:38:58', 'Paid', 4059.99);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (106, 122, 1, '2026-05-02 11:09:33', 'Pending', 937.32);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (107, 102, 2, '2026-05-10 01:08:50', 'Paid', 1780.67);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (108, 40, 2, '2026-03-22 21:51:49', 'Delivered', 3976.9);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (109, 100, 9, '2026-03-27 03:31:46', 'Shipped', 4105.46);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (110, 73, 14, '2026-08-15 16:58:20', 'Delivered', 800.65);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (111, 34, 5, '2026-08-17 13:05:53', 'Pending', 2857.92);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (112, 92, 10, '2026-07-21 07:23:08', 'Delivered', 2429.4);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (113, 120, 8, '2026-08-13 20:16:47', 'Delivered', 5202.79);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (114, 35, 5, '2026-08-29 04:56:11', 'Delivered', 163.96);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (115, 117, 13, '2026-07-06 02:20:53', 'Delivered', 6638.28);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (116, 137, 9, '2026-05-24 16:49:04', 'Delivered', 2000.62);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (117, 124, 7, '2026-06-17 15:19:01', 'Delivered', 3479.59);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (118, 114, 9, '2026-03-14 14:58:10', 'Shipped', 3078.12);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (119, 67, 4, '2026-07-06 10:25:08', 'Shipped', 1967.98);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (120, 1, 4, '2026-08-05 00:01:52', 'Shipped', 1354.64);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (121, 121, NULL, '2026-09-02 08:04:06', 'Delivered', 7331.23);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (122, 126, 15, '2026-09-08 10:19:33', 'Shipped', 3382.64);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (123, 111, 9, '2026-07-24 06:44:40', 'Delivered', 3532.23);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (124, 2, 11, '2026-08-23 16:52:25', 'Paid', 268.15);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (125, 144, 13, '2026-06-04 18:45:05', 'Shipped', 4531.78);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (126, 42, 12, '2026-05-20 05:16:56', 'Delivered', 1558.95);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (127, 57, 8, '2026-07-10 23:31:35', 'Paid', 2579.2);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (128, 62, 8, '2026-07-25 19:16:19', 'Shipped', 2942.27);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (129, 137, 8, '2026-05-22 09:45:37', 'Delivered', 873.85);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (130, 18, 5, '2026-04-11 04:34:16', 'Paid', 4164.89);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (131, 29, 14, '2026-08-27 14:30:49', 'Delivered', 2128.8);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (132, 70, 15, '2026-06-13 06:55:18', 'Paid', 4920.42);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (133, 5, 4, '2026-07-05 00:17:43', 'Pending', 3814.28);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (134, 137, NULL, '2026-06-25 15:57:03', 'Paid', 3797.08);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (135, 27, 9, '2026-06-04 13:09:38', 'Shipped', 2630.89);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (136, 113, NULL, '2026-07-23 17:08:25', 'Shipped', 4201.17);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (137, 39, NULL, '2026-06-07 21:58:52', 'Delivered', 5727.16);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (138, 88, 13, '2026-07-21 11:09:05', 'Shipped', 3194.45);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (139, 128, 11, '2026-04-14 15:20:09', 'Delivered', 1274.55);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (140, 9, 10, '2026-08-20 20:55:18', 'Paid', 1071.28);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (141, 38, 1, '2026-04-21 01:43:06', 'Shipped', 4064.67);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (142, 101, 2, '2026-06-05 18:06:14', 'Delivered', 6353.59);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (143, 47, 6, '2026-04-19 21:42:55', 'Delivered', 731.83);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (144, 65, 12, '2026-06-21 10:26:47', 'Delivered', 2453.44);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (145, 32, 7, '2026-07-08 12:36:05', 'Shipped', 2348.48);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (146, 114, 7, '2026-05-02 12:04:42', 'Delivered', 2950.78);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (147, 9, 6, '2026-06-22 02:40:38', 'Delivered', 3176.28);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (148, 25, 6, '2026-06-01 03:58:35', 'Delivered', 1583.51);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (149, 80, 10, '2026-08-16 21:51:14', 'Paid', 912.36);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (150, 11, 3, '2026-04-15 15:20:40', 'Shipped', 2305.96);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (151, 77, 6, '2026-06-16 01:16:45', 'Shipped', 6342.54);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (152, 14, 6, '2026-06-24 00:10:20', 'Cancelled', 3832.87);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (153, 61, 13, '2026-08-16 11:17:03', 'Shipped', 4286.17);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (154, 43, 8, '2026-08-25 12:06:55', 'Delivered', 5180.58);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (155, 102, 7, '2026-08-03 15:19:00', 'Pending', 6115.67);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (156, 11, 15, '2026-04-10 04:00:00', 'Delivered', 4441.62);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (157, 40, 11, '2026-07-21 13:35:31', 'Delivered', 3514.52);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (158, 64, 5, '2026-08-31 12:28:18', 'Delivered', 2076.3);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (159, 87, 1, '2026-03-29 12:19:14', 'Paid', 918.95);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (160, 40, 3, '2026-08-03 05:12:29', 'Paid', 2107.69);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (161, 60, 10, '2026-09-02 14:32:17', 'Cancelled', 5345.75);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (162, 89, 14, '2026-08-28 05:34:27', 'Delivered', 804.41);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (163, 6, 12, '2026-07-17 13:39:40', 'Shipped', 1809.9);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (164, 35, 8, '2026-04-07 08:57:27', 'Delivered', 3410.33);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (165, 125, 14, '2026-07-26 22:10:18', 'Delivered', 1491.32);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (166, 139, 15, '2026-03-13 10:32:40', 'Paid', 2765.3);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (167, 48, 11, '2026-08-29 06:58:00', 'Shipped', 1004.22);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (168, 120, 8, '2026-09-09 01:22:57', 'Delivered', 3840.9);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (169, 142, 5, '2026-05-22 18:43:09', 'Paid', 817.04);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (170, 40, 14, '2026-05-14 23:55:21', 'Shipped', 1190.93);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (171, 68, 11, '2026-07-14 14:24:14', 'Delivered', 3354.62);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (172, 130, 12, '2026-04-27 09:22:33', 'Delivered', 4152.23);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (173, 5, 11, '2026-07-23 02:03:18', 'Delivered', 1277.52);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (174, 62, 10, '2026-08-24 07:43:48', 'Delivered', 2828.31);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (175, 138, 12, '2026-05-17 03:49:10', 'Paid', 3085.3);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (176, 128, 4, '2026-05-13 18:34:58', 'Delivered', 2800.82);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (177, 83, 13, '2026-05-02 08:10:16', 'Delivered', 522.14);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (178, 29, 3, '2026-08-12 01:26:10', 'Delivered', 2105.31);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (179, 18, 1, '2026-07-01 14:07:27', 'Delivered', 1530.87);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (180, 34, 5, '2026-05-09 13:22:20', 'Delivered', 2585.15);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (181, 52, 3, '2026-08-21 19:42:13', 'Delivered', 3885.5);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (182, 26, 1, '2026-08-20 01:41:45', 'Delivered', 2748.68);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (183, 100, 15, '2026-08-25 04:54:22', 'Delivered', 1689.58);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (184, 66, 1, '2026-03-28 15:51:06', 'Shipped', 3110.43);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (185, 19, NULL, '2026-07-29 02:40:49', 'Delivered', 5215.56);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (186, 54, 15, '2026-03-22 11:21:49', 'Delivered', 3835.65);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (187, 21, 14, '2026-04-24 01:36:49', 'Delivered', 1756.96);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (188, 16, 11, '2026-05-24 16:25:22', 'Delivered', 3725.41);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (189, 107, 11, '2026-03-18 07:14:37', 'Delivered', 3218.67);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (190, 15, 8, '2026-08-23 02:06:27', 'Delivered', 3991.74);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (191, 19, 9, '2026-04-10 19:06:15', 'Paid', 354.78);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (192, 56, 3, '2026-04-09 09:11:20', 'Paid', 3118.23);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (193, 60, 12, '2026-06-06 17:39:01', 'Paid', 974.4);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (194, 135, 7, '2026-05-11 00:18:11', 'Delivered', 6239.34);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (195, 46, 13, '2026-05-06 18:16:10', 'Delivered', 1806.58);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (196, 148, 11, '2026-07-01 11:46:44', 'Delivered', 1078.13);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (197, 110, 3, '2026-05-07 18:24:21', 'Paid', 6859.85);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (198, 47, 12, '2026-06-01 16:24:14', 'Delivered', 3717.6);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (199, 41, 14, '2026-08-06 15:53:13', 'Delivered', 2667.24);
+INSERT INTO orders (order_id, user_id, coupon_id, order_date, status, total_amount) VALUES (200, 81, 10, '2026-06-19 15:54:47', 'Delivered', 1872.9);
 
 -- Order Items
 INSERT INTO order_items (order_id, product_id, quantity, unit_price, discount) VALUES (1, 163, 2, 630.17, 0.12);
@@ -3387,344 +3387,344 @@ INSERT INTO inventory (product_id, warehouse_id, quantity_on_hand, reorder_level
 INSERT INTO inventory (product_id, warehouse_id, quantity_on_hand, reorder_level) VALUES (250, 6, 472, 7);
 
 -- Reviews
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (224, 80, 3, NULL, '2026-05-29 12:40:57');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (152, 9, 3, NULL, '2026-05-21 12:10:33');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (45, 146, 4, 'Eat each history environment. Stop water discover party activity what several group. Happen scientist think however miss Mr generation Congress.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (224, 80, 3, NULL, '2026-05-29 12:40:57');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (152, 9, 3, NULL, '2026-05-21 12:10:33');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (45, 146, 4, 'Eat each history environment. Stop water discover party activity what several group. Happen scientist think however miss Mr generation Congress.
 They face ten behavior effect special major. Lay forget road cut thank. Task already set well always work learn.', '2026-06-02 17:34:11');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (133, 124, 1, 'Must support oil two million second. Special relationship market this investment.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (133, 124, 1, 'Must support oil two million second. Special relationship market this investment.
 All talk treatment source today. Produce media product soon quality interesting type.', '2026-07-09 06:58:27');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (150, 80, 1, 'Support serve perhaps summer. Happen possible election western old person identify.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (150, 80, 1, 'Support serve perhaps summer. Happen possible election western old person identify.
 Beyond receive quality night friend. Cover require article some Democrat tonight. Buy fly not wife against.
 Seem strong effort report suggest even. Able arrive safe already know.', '2026-07-05 12:51:52');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (170, 73, 5, 'Child under sea else open. Office scientist chance tell boy system turn. Ready speech impact station focus every run.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (170, 73, 5, 'Child under sea else open. Office scientist chance tell boy system turn. Ready speech impact station focus every run.
 Top left night without project risk western. Travel travel style follow wind seat central. Area involve southern least next crime husband should.', '2026-06-10 18:58:17');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (38, 81, 4, 'Goal lose yourself just wrong thing offer. Bill involve scientist for improve someone fast. Church result true reach decision natural beyond.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (38, 81, 4, 'Goal lose yourself just wrong thing offer. Bill involve scientist for improve someone fast. Church result true reach decision natural beyond.
 Huge usually collection this alone scene find. How worker discussion at. Finally inside though call industry step himself.', '2026-06-17 02:54:57');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (167, 34, 4, NULL, '2026-06-12 03:43:41');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (76, 105, 5, 'Pretty food save condition church. Reality in north determine. Red war may its available.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (167, 34, 4, NULL, '2026-06-12 03:43:41');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (76, 105, 5, 'Pretty food save condition church. Reality in north determine. Red war may its available.
 Hand threat dream. Allow four difference break her southern tax. His ground strategy card book budget key.', '2026-05-04 20:00:55');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (205, 129, 5, NULL, '2026-06-11 03:19:53');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (88, 98, 4, 'Agent him cost program as beautiful. Their land weight away one listen minute onto. At without lawyer cup she.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (205, 129, 5, NULL, '2026-06-11 03:19:53');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (88, 98, 4, 'Agent him cost program as beautiful. Their land weight away one listen minute onto. At without lawyer cup she.
 Morning after at year institution city. Visit indicate become everyone heavy.
 Voice source it friend. Speech camera push energy. Although put believe writer blue month board.', '2026-08-18 04:16:33');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (26, 10, 3, NULL, '2026-08-26 15:00:32');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (230, 119, 2, 'National environmental cover. Republican agent yes need scientist. Fund wonder report.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (26, 10, 3, NULL, '2026-08-26 15:00:32');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (230, 119, 2, 'National environmental cover. Republican agent yes need scientist. Fund wonder report.
 Result price special option also continue black. Yourself best reduce nothing individual. Whether avoid tree they.', '2026-04-12 22:31:34');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (166, 60, 5, 'A difference rich employee. Hard why government resource the service. Great sure try place decision experience. Perhaps support field until now send fact.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (166, 60, 5, 'A difference rich employee. Hard why government resource the service. Great sure try place decision experience. Perhaps support field until now send fact.
 Establish always history then relationship nor. Couple thought shoulder suggest age you.', '2026-08-02 03:27:36');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (234, 37, 4, NULL, '2026-07-24 10:30:43');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (203, 129, 4, 'Office fine who million hard. Subject push listen most north. By commercial item him herself cultural have.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (234, 37, 4, NULL, '2026-07-24 10:30:43');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (203, 129, 4, 'Office fine who million hard. Subject push listen most north. By commercial item him herself cultural have.
 Special weight itself clear drive much. South like discuss effect. Day science region yourself whole play like. Start single allow toward situation state such.', '2026-05-25 04:52:30');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (178, 134, 5, 'Since project everyone yes stuff. Recent perform air describe wear. Still issue production interview.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (178, 134, 5, 'Since project everyone yes stuff. Recent perform air describe wear. Still issue production interview.
 Pm thousand instead main seat likely position. Seem Republican best product. Far necessary meeting east.', '2026-06-19 16:36:09');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (20, 34, 3, 'Purpose answer yet probably miss theory cost. Very example finally yet. Represent couple discover still represent.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (20, 34, 3, 'Purpose answer yet probably miss theory cost. Very example finally yet. Represent couple discover still represent.
 My measure fear specific administration security project. Former read reality onto night happy me. Find sell argue himself reduce reveal each operation.', '2026-06-29 05:40:10');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (1, 111, 1, 'Skin democratic increase try their thank for. Sister foreign size career win. Republican friend just director.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (1, 111, 1, 'Skin democratic increase try their thank for. Sister foreign size career win. Republican friend just director.
 Which appear peace leave management number. Husband cultural trip on. Factor whether want there quickly now. Network place special some after nearly population.
 Best eight mean.', '2026-06-27 22:50:18');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (234, 100, 3, 'Piece good reason too evening.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (234, 100, 3, 'Piece good reason too evening.
 Tax tonight fall wish realize when interest. People staff cup and.
 Lead only choice forward. Present ten eight serve. Foreign war leg push quite.', '2026-07-24 02:55:49');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (38, 20, 5, 'Ahead small be produce office along success. Hotel remain include several strategy event.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (38, 20, 5, 'Ahead small be produce office along success. Hotel remain include several strategy event.
 Least seek color should. Hope matter special site save design.
 Hit writer true he certain. For knowledge save here deal role. Wide service second product compare read present.', '2026-06-11 23:54:29');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (164, 128, 2, NULL, '2026-08-30 01:39:17');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (81, 80, 4, 'House team trouble free recently eight oil. On as painting.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (164, 128, 2, NULL, '2026-08-30 01:39:17');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (81, 80, 4, 'House team trouble free recently eight oil. On as painting.
 Thousand husband your article hour hope. Society approach quickly home. Knowledge left scientist whether.
 Stuff may bed scientist hair. Them reach live place provide.', '2026-08-05 19:24:07');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (98, 23, 4, 'Worry really turn his. Us for region consumer state long anyone camera. Describe receive bit wonder hospital.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (98, 23, 4, 'Worry really turn his. Us for region consumer state long anyone camera. Describe receive bit wonder hospital.
 Likely energy after ask its. Such expert growth lot really score yard. Entire red position as opportunity someone send.', '2026-07-12 12:23:49');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (181, 44, 5, NULL, '2026-05-15 16:23:44');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (197, 72, 4, 'Wear myself keep partner billion risk. Go town power feel wall.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (181, 44, 5, NULL, '2026-05-15 16:23:44');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (197, 72, 4, 'Wear myself keep partner billion risk. Go town power feel wall.
 Professional sure material include put fly lawyer. To early serve type. Your we rise any.
 Various lose idea. Standard walk seek section full. Practice floor action ability.', '2026-07-07 08:59:54');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (120, 19, 3, 'Well officer team choose tend. Turn color boy understand general consider.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (120, 19, 3, 'Well officer team choose tend. Turn color boy understand general consider.
 Deal though material explain finish. White boy face floor plant education. Seem ago long training.
 Clearly away green onto late with. Help occur seem very oil paper. Keep fear with discussion.', '2026-05-18 17:41:47');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (17, 67, 5, 'Congress look local low down policy. Center medical middle know. Total authority tax per until series.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (17, 67, 5, 'Congress look local low down policy. Center medical middle know. Total authority tax per until series.
 Forward manage that Mrs wind camera cost. American single truth food activity expert school just. Focus hair allow role attack difference.
 Fact call price thank. Wonder could doctor visit.', '2026-05-10 03:34:58');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (145, 114, 4, NULL, '2026-07-26 20:27:36');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (240, 32, 5, 'Trouble moment nice shake foot likely. Chair reduce live couple system interesting answer. Lay ok spend right test suffer in. Matter notice material special upon wish social.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (145, 114, 4, NULL, '2026-07-26 20:27:36');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (240, 32, 5, 'Trouble moment nice shake foot likely. Chair reduce live couple system interesting answer. Lay ok spend right test suffer in. Matter notice material special upon wish social.
 Everyone hair another region over. War thus role wife.
 Admit kid discuss consider.', '2026-05-30 04:28:57');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (70, 94, 5, 'Style whatever watch kind everyone point network. Skill suggest leave alone media may according forget. Share real southern hair score full. Local join describe people he show scientist wind.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (70, 94, 5, 'Style whatever watch kind everyone point network. Skill suggest leave alone media may according forget. Share real southern hair score full. Local join describe people he show scientist wind.
 Something system impact indeed. Ask campaign blood hold. Need sit still consumer ten.', '2026-05-12 21:24:20');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (23, 34, 4, 'Up interest class movie international project animal. Little he value nor large during. Fact specific five seat police thousand.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (23, 34, 4, 'Up interest class movie international project animal. Little he value nor large during. Fact specific five seat police thousand.
 Government activity although foreign. Prepare scene nature ago music floor foot. Character garden mean series six picture another.
 Explain box society beat.', '2026-04-25 15:55:25');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (249, 81, 3, 'Relate key pressure. Among the find.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (249, 81, 3, 'Relate key pressure. Among the find.
 Almost political onto candidate local. Them number race unit his parent. Perhaps forward power school system.
 Turn different pretty. None idea maintain that fight. Side trouble best although role dog.', '2026-05-14 00:30:52');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (46, 130, 4, 'Event win total. Test myself say many close first feeling. Heavy school anything often war decision marriage.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (46, 130, 4, 'Event win total. Test myself say many close first feeling. Heavy school anything often war decision marriage.
 May break huge image mouth night development adult.
 Family owner quickly near half big education. Until his child keep born. Despite blue kid order laugh common. Skill want once until.', '2026-06-13 20:56:24');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (97, 11, 4, 'Energy bit continue end why.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (97, 11, 4, 'Energy bit continue end why.
 Outside social school experience. Either process stuff sometimes boy despite. Newspaper effect media stock career owner specific.
 East hot foot close together stage. Able soon example put financial end.
 Someone itself buy. Course choice good history news century.', '2026-05-23 08:15:36');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (80, 63, 4, 'Recent just likely character. Day allow professional prevent deep. View safe eat image citizen easy choice.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (80, 63, 4, 'Recent just likely character. Day allow professional prevent deep. View safe eat image citizen easy choice.
 Large trouble involve fact. From media meet buy play fall his wide. Sell on character offer environmental particular skin.', '2026-05-16 18:00:06');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (106, 40, 5, NULL, '2026-07-18 15:12:48');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (174, 41, 4, 'Decide cost course however top represent deal. Low others game few. Never move country big five.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (106, 40, 5, NULL, '2026-07-18 15:12:48');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (174, 41, 4, 'Decide cost course however top represent deal. Low others game few. Never move country big five.
 Administration huge evidence stand church interest Mrs. The develop more really.', '2026-06-12 19:45:33');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (104, 58, 3, 'Financial weight need painting. Value where bit site.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (104, 58, 3, 'Financial weight need painting. Value where bit site.
 Which between society each amount indeed. Art eye back term.
 Market prepare house remember this ask nor partner. Contain what most industry hear wonder. Industry behavior hospital us purpose. Box among west likely.', '2026-05-05 12:31:13');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (199, 24, 3, 'Suddenly school hospital huge always account.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (199, 24, 3, 'Suddenly school hospital huge always account.
 Manage message for president perhaps. Successful pattern as collection direction bring form.
 Other step common offer. Who foreign also father.
 Range suffer fast side happy doctor be. I find outside lawyer appear little pick.', '2026-09-04 15:49:45');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (84, 137, 5, 'Approach could kitchen certain picture back dinner guy. Religious able cover door south hear inside inside. Break bar if. Though quality writer truth.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (84, 137, 5, 'Approach could kitchen certain picture back dinner guy. Religious able cover door south hear inside inside. Break bar if. Though quality writer truth.
 According very coach company. Approach note back hold everybody set. Study dinner bring behind appear near.', '2026-07-04 09:00:47');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (201, 22, 3, NULL, '2026-07-10 23:11:13');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (164, 102, 4, NULL, '2026-07-27 17:25:54');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (62, 85, 2, 'Including kid speak point church individual.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (201, 22, 3, NULL, '2026-07-10 23:11:13');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (164, 102, 4, NULL, '2026-07-27 17:25:54');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (62, 85, 2, 'Including kid speak point church individual.
 Our beautiful son draw consider body. Change control up.
 Look best however force interest collection. Cold cover third key explain professor oil happen. Marriage court campaign many.', '2026-09-08 08:43:44');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (105, 125, 3, 'Keep avoid pull data avoid scientist. Begin through a important others.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (105, 125, 3, 'Keep avoid pull data avoid scientist. Begin through a important others.
 Pressure myself little sport court account. Power some value idea.
 Ahead bit practice already billion call degree. Tax professor mission stock because.
 Visit who like. Group stuff employee air now program.', '2026-04-30 13:54:12');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (125, 30, 3, NULL, '2026-08-22 01:03:01');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (134, 40, 5, NULL, '2026-06-22 05:13:20');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (134, 55, 3, NULL, '2026-08-21 21:52:01');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (206, 98, 2, 'Certain travel month camera weight artist. Thus think call available bad turn. Hundred difference southern walk speak.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (125, 30, 3, NULL, '2026-08-22 01:03:01');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (134, 40, 5, NULL, '2026-06-22 05:13:20');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (134, 55, 3, NULL, '2026-08-21 21:52:01');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (206, 98, 2, 'Certain travel month camera weight artist. Thus think call available bad turn. Hundred difference southern walk speak.
 Reduce party draw try institution five ask send. Interesting foot seven do water.
 Society act almost food start billion real degree. Use politics fact interesting.', '2026-05-23 09:46:07');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (97, 111, 5, NULL, '2026-07-25 14:07:30');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (146, 55, 5, 'Police major study drive environment. He pressure president participant eat. Local behind interview sign choose week student baby.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (97, 111, 5, NULL, '2026-07-25 14:07:30');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (146, 55, 5, 'Police major study drive environment. He pressure president participant eat. Local behind interview sign choose week student baby.
 Any work somebody Democrat affect treatment. Million perform news recent. Popular scene grow north foreign.', '2026-08-12 03:19:09');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (106, 109, 3, 'Science mention throughout particularly. With you seat approach maybe cut several. Whether start least old.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (106, 109, 3, 'Science mention throughout particularly. With you seat approach maybe cut several. Whether start least old.
 There chance step civil. Western control hope marriage get. Mind general series investment interesting. Record when end country social market remain.', '2026-07-12 15:27:07');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (145, 22, 2, NULL, '2026-05-10 00:48:55');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (174, 21, 3, 'Draw loss born power lay pay pattern century. Within production you. Production suggest form weight.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (145, 22, 2, NULL, '2026-05-10 00:48:55');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (174, 21, 3, 'Draw loss born power lay pay pattern century. Within production you. Production suggest form weight.
 Hair ready school natural manager song relationship.
 Far situation major least give chance. Return between which size author on be.', '2026-05-24 02:26:11');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (188, 108, 4, 'Represent theory color cause role. Direction color almost machine. Model focus region source arrive.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (188, 108, 4, 'Represent theory color cause role. Direction color almost machine. Model focus region source arrive.
 Debate store bit lose worker. No keep mind look college different. Interest watch network cell.
 According yet other land head person avoid.', '2026-05-28 04:38:35');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (176, 67, 3, NULL, '2026-06-06 04:48:35');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (59, 110, 3, 'Keep major worker. Fly discussion green.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (176, 67, 3, NULL, '2026-06-06 04:48:35');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (59, 110, 3, 'Keep major worker. Fly discussion green.
 Candidate daughter enough rich project single agree. Specific north second military focus south carry. Exactly loss wish shake which middle save.
 Audience he show beyond this southern dog. Land administration in.', '2026-07-10 12:13:08');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (1, 43, 3, 'Risk subject eight arm maintain. Baby letter similar Democrat occur present agree best. Oil these to expert try military and.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (1, 43, 3, 'Risk subject eight arm maintain. Baby letter similar Democrat occur present agree best. Oil these to expert try military and.
 Hospital stock large realize. Fear next use during.', '2026-07-12 01:32:50');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (249, 124, 4, 'Receive reduce action without better page. Much song various enjoy focus force.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (249, 124, 4, 'Receive reduce action without better page. Much song various enjoy focus force.
 Sister station language family control wide employee. Tough wind TV type program information. Act skin any role position.', '2026-09-05 16:54:36');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (5, 42, 5, 'Threat also fall.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (5, 42, 5, 'Threat also fall.
 Support edge left more decision. Special go guess affect year necessary painting. How care kitchen art whom.
 Recent own school. Write born property blood. Good race health news brother not.', '2026-05-16 13:38:41');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (140, 147, 3, NULL, '2026-08-13 17:05:19');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (240, 51, 2, 'Once I around gun. Between member turn everyone order executive.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (140, 147, 3, NULL, '2026-08-13 17:05:19');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (240, 51, 2, 'Once I around gun. Between member turn everyone order executive.
 Total conference raise base professor direction meet significant. Task somebody tell plan. Walk raise everything manage Republican.
 Leader response without begin teacher trip federal morning. Yeah after above produce his surface tell.', '2026-06-22 20:45:14');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (231, 38, 3, 'Like day most focus ever challenge born. Talk lawyer interest suggest.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (231, 38, 3, 'Like day most focus ever challenge born. Talk lawyer interest suggest.
 Fill itself leader interesting wear send realize. Open over thus clear. Call officer possible decision large.', '2026-06-22 21:12:45');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (15, 82, 1, 'Even green late suggest. Care half weight adult. Growth while eight example.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (15, 82, 1, 'Even green late suggest. Care half weight adult. Growth while eight example.
 There fly speech car hope picture make wear. Value near ground run remember. Hospital street send improve drug full even. About toward free yourself.', '2026-08-19 18:23:30');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (88, 38, 4, 'Age important interest particular all player. Itself themselves enough common toward outside statement. Cultural growth argue loss store.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (88, 38, 4, 'Age important interest particular all player. Itself themselves enough common toward outside statement. Cultural growth argue loss store.
 Great long that level moment cause. Blood year nor ask born cover quite.', '2026-08-17 18:12:34');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (213, 105, 3, 'Adult decade side federal concern would off respond. Perhaps best about recent pull.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (213, 105, 3, 'Adult decade side federal concern would off respond. Perhaps best about recent pull.
 Party brother reason occur feel too always attention. My network year town. Itself ground give with president.
 Step none town wonder yeah.', '2026-08-12 16:59:09');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (217, 116, 5, 'Little carry society yet offer sport husband. Another success good citizen kitchen paper.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (217, 116, 5, 'Little carry society yet offer sport husband. Another success good citizen kitchen paper.
 Push reflect early letter house. Responsibility several maintain those safe they money.
 Bad commercial money job close maintain either small. Try base far kitchen relate tax.', '2026-04-23 21:18:05');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (205, 116, 4, 'South note care simply evidence skill eat.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (205, 116, 4, 'South note care simply evidence skill eat.
 Institution just type fact. Develop group air old have total.
 Think rest memory. How successful west before despite arm.
 Would realize every course.
 Increase agree matter do continue billion. Defense defense street loss plant and. Best thing face.', '2026-08-17 05:38:23');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (74, 10, 3, 'Unit apply trip finish be wear. Game return strong stock base. Represent all skill whatever fund bar firm. Two remain occur foreign whom.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (74, 10, 3, 'Unit apply trip finish be wear. Game return strong stock base. Represent all skill whatever fund bar firm. Two remain occur foreign whom.
 Around who loss over course thousand. Someone wonder manager machine join. Suggest either maybe. Heavy first glass study college finally.', '2026-06-28 23:55:43');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (37, 108, 4, 'Body break no still best area who. Water nothing provide. Government majority news husband scene high.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (37, 108, 4, 'Body break no still best area who. Water nothing provide. Government majority news husband scene high.
 Enjoy safe before. Town everything case win end. See management pick morning.
 Summer ask standard dinner protect price. Improve edge pay yes.
 Central artist rise professor bring.', '2026-06-22 02:59:40');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (214, 97, 3, NULL, '2026-07-22 00:25:22');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (243, 49, 5, 'Security skill hot say raise fine building learn. Follow ahead management add.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (214, 97, 3, NULL, '2026-07-22 00:25:22');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (243, 49, 5, 'Security skill hot say raise fine building learn. Follow ahead management add.
 Serious book sea thing accept large. Network condition exist happy lead bill personal. Lot animal into capital begin risk sometimes.
 Service federal ten else action play somebody. Gun laugh computer hair.', '2026-06-02 14:23:53');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (229, 4, 3, 'Article democratic benefit address. Music chance make probably society sure themselves. Response same huge drive.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (229, 4, 3, 'Article democratic benefit address. Music chance make probably society sure themselves. Response same huge drive.
 Top until people those performance. But just her baby relate charge.
 Then why must however them cover. Car growth wonder. Message could certain art challenge for.', '2026-06-25 23:11:25');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (61, 78, 5, 'Trip player explain bring argue anything above. Follow fall expert whether while surface.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (61, 78, 5, 'Trip player explain bring argue anything above. Follow fall expert whether while surface.
 West series everybody artist reduce. Student research ability move recent weight. Thought himself north support each health someone.', '2026-06-19 13:55:44');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (207, 32, 4, 'Box could rate should fly piece. Today brother perhaps.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (207, 32, 4, 'Box could rate should fly piece. Today brother perhaps.
 Foreign lot total meet a executive machine. Him member may. Know general difference.
 Really while guess floor have argue.
 Church life begin just member public. Add guess decade tend second build.', '2026-06-15 10:28:51');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (14, 117, 4, 'Democratic sign list record certainly. No throw on large memory study. Among very purpose condition data. Heart anything include.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (14, 117, 4, 'Democratic sign list record certainly. No throw on large memory study. Among very purpose condition data. Heart anything include.
 Keep chance stop. Data day suddenly past. Population movement sport nothing.', '2026-07-08 19:30:00');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (35, 139, 4, 'High discussion president without move. Nearly look improve direction wish service campaign account.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (35, 139, 4, 'High discussion president without move. Nearly look improve direction wish service campaign account.
 Drive develop million place dream. Hit shoulder food particular research child administration.
 Sing early strong.', '2026-08-16 17:36:48');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (241, 86, 2, NULL, '2026-08-06 10:59:32');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (176, 110, 3, 'Couple take nor ahead participant. My far matter piece level between realize how.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (241, 86, 2, NULL, '2026-08-06 10:59:32');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (176, 110, 3, 'Couple take nor ahead participant. My far matter piece level between realize how.
 Nor produce then. Style identify month world community power.
 Name off action her this human. Race model themselves city onto find tend.', '2026-07-29 23:53:47');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (95, 42, 4, 'Trial generation rise either most lay of. Today move court indicate somebody. Help reality trouble play hit consumer describe. Reach institution institution road fear floor policy.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (95, 42, 4, 'Trial generation rise either most lay of. Today move court indicate somebody. Help reality trouble play hit consumer describe. Reach institution institution road fear floor policy.
 Play field policy most right across reflect. Model two politics free two drop. Camera same themselves month.', '2026-07-16 18:05:59');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (7, 112, 4, 'Safe customer back stand win budget long full. Establish order every reveal.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (7, 112, 4, 'Safe customer back stand win budget long full. Establish order every reveal.
 Strong market name last reveal. Goal tell local.
 Allow final add treat. Ever trip education add boy kind family. Catch outside recently memory first into.', '2026-06-12 08:04:59');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (242, 26, 5, 'Despite door career data movie seek modern. Choice positive education power. Cost include issue beautiful dinner husband.
-Political appear trial customer prepare. Relationship strategy often improve. Discussion hand positive all role chance into.', '2026-07-21 03:57:04');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (93, 27, 2, NULL, '2026-08-21 05:08:53');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (176, 106, 2, 'Wall very eat area listen million. Take candidate same make fear.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (242, 26, 5, 'Despite door career data movie seek modern. Choice positive education power. Cost include issue beautiful dinner husband.
+Political appear trial user prepare. Relationship strategy often improve. Discussion hand positive all role chance into.', '2026-07-21 03:57:04');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (93, 27, 2, NULL, '2026-08-21 05:08:53');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (176, 106, 2, 'Wall very eat area listen million. Take candidate same make fear.
 Treat fire start. Future push number value.
 Argue similar cup board yeah. Start too now black see arrive. Quickly identify traditional ten sport behavior protect.
 Police group wear. Especially challenge learn inside smile early.', '2026-07-07 05:10:29');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (166, 140, 2, 'Response word west Mr material. Outside too management first use cost. Rich pull think clear smile.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (166, 140, 2, 'Response word west Mr material. Outside too management first use cost. Rich pull think clear smile.
 Several anyone television human. Rock after probably phone you. Where leader evidence poor expert direction response certainly.
 Quickly moment we trip really rule. Far task line.', '2026-07-05 02:51:27');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (19, 149, 5, 'Party close now at. Capital campaign call green give.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (19, 149, 5, 'Party close now at. Capital campaign call green give.
 Wide anyone turn short exist option ability. Light of become short stop sea. Enough write throughout go bring. Yes development daughter enter.
 Reality method after table describe vote dream. Particular factor follow last see pretty.', '2026-07-16 20:55:15');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (210, 108, 3, 'Bad eight should window measure design less. Appear around talk know perform water return.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (210, 108, 3, 'Bad eight should window measure design less. Appear around talk know perform water return.
 His design kitchen conference. Research them theory dark into. Check when many moment effort make loss.', '2026-08-11 13:11:27');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (218, 142, 3, NULL, '2026-08-01 14:50:45');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (8, 121, 5, 'Information truth bit owner.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (218, 142, 3, NULL, '2026-08-01 14:50:45');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (8, 121, 5, 'Information truth bit owner.
 Coach up land song story yes. Guess former difference which. Wish land wait direction.
 Stage forget him as story. Teacher here piece central.
 Skill commercial more.
 Side ground staff miss trip than less shoulder. Building by for mention prepare themselves.', '2026-08-09 06:44:00');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (92, 119, 4, 'House middle particularly fish. Baby think clear employee.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (92, 119, 4, 'House middle particularly fish. Baby think clear employee.
 Man teacher ago foot owner run financial. Economy participant speak son order.
 Process firm question will service prepare. Plan protect need according. Way respond center manage wait avoid great.', '2026-06-19 04:52:42');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (20, 102, 1, 'Great black everyone score increase week baby.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (20, 102, 1, 'Great black everyone score increase week baby.
 Rock rather someone why result area. Doctor yes shoulder a continue. Garden her fight have such suffer.
 Second think rise onto live wind. Share front item foot. Society soon charge.
 Partner father their. Bring reflect PM tell.', '2026-05-07 00:01:20');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (20, 58, 4, NULL, '2026-07-10 17:24:22');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (143, 68, 3, 'Audience through individual official artist offer power. Goal argue born success. Huge however approach item thank around.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (20, 58, 4, NULL, '2026-07-10 17:24:22');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (143, 68, 3, 'Audience through individual official artist offer power. Goal argue born success. Huge however approach item thank around.
 Especially build prevent off. Kitchen issue dark organization without include allow. Hold any leave pattern still television change television.', '2026-07-25 16:00:56');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (204, 107, 4, NULL, '2026-04-14 02:16:59');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (38, 107, 1, NULL, '2026-08-07 03:57:54');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (46, 96, 5, 'Require ask foot maintain four write administration.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (204, 107, 4, NULL, '2026-04-14 02:16:59');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (38, 107, 1, NULL, '2026-08-07 03:57:54');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (46, 96, 5, 'Require ask foot maintain four write administration.
 His teach risk because structure. Land rule whose everybody movie trade.
 Sell if visit politics strategy. Political last information for.
 Prove cold special describe black. Impact dog work beat development think stop. Half mention avoid drop.', '2026-07-24 02:47:16');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (186, 82, 3, 'Others again may year whatever anyone institution. Authority which factor team investment police that. Benefit local level charge participant clear.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (186, 82, 3, 'Others again may year whatever anyone institution. Authority which factor team investment police that. Benefit local level charge participant clear.
 Thousand light news ahead science season.', '2026-07-09 16:27:00');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (188, 111, 3, 'Concern charge financial field upon information. Particular operation successful tell. Congress guy out also act. Discussion energy performance care certain try.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (188, 111, 3, 'Concern charge financial field upon information. Particular operation successful tell. Congress guy out also act. Discussion energy performance care certain try.
 Area force fill quickly institution common pay. Scientist enough really eight skin before. Plant bring finish tax local own single.', '2026-05-17 11:20:44');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (175, 50, 4, 'School notice something lot. Though for join necessary make though health.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (175, 50, 4, 'School notice something lot. Though for join necessary make though health.
 Remember task for for model yourself.
 Color throughout among teach must mind cost. Miss security office test see age.
 Picture guess media leg. Herself model happen Mrs step. Individual sense view professor.', '2026-05-13 23:53:06');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (75, 14, 5, 'Door keep operation Mr. Modern technology real. Easy contain various nearly you something.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (75, 14, 5, 'Door keep operation Mr. Modern technology real. Easy contain various nearly you something.
 Worker than hospital still laugh. Suddenly service main service establish explain.
 Phone unit choice college. Must theory day.
 Story put son capital not safe. Decide arm avoid question.', '2026-06-07 22:05:29');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (103, 33, 5, 'Machine health manager sometimes. Early prepare plant growth.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (103, 33, 5, 'Machine health manager sometimes. Early prepare plant growth.
 Prepare practice indeed computer phone rather. Party available Democrat collection more pass. Quality wall threat. Very several moment begin time leave executive.', '2026-06-24 11:02:01');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (85, 45, 4, 'Community teach research manager many. Defense next well simply authority onto.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (85, 45, 4, 'Community teach research manager many. Defense next well simply authority onto.
 Song do throughout recognize. Side work now. Forget side mention skin computer new news.
 Specific summer line leg.', '2026-06-25 08:28:28');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (196, 41, 4, NULL, '2026-05-29 11:17:54');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (174, 33, 4, 'Begin bag fish speech agency despite tax. High candidate law theory. Network note act general.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (196, 41, 4, NULL, '2026-05-29 11:17:54');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (174, 33, 4, 'Begin bag fish speech agency despite tax. High candidate law theory. Network note act general.
 Affect together attorney. Probably Congress food different test college crime present.
 Production western computer sure present. Thought before others above tend sense hold.', '2026-05-13 06:50:24');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (72, 101, 5, 'Western report inside for.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (72, 101, 5, 'Western report inside for.
 Fine street evening. Magazine along thus program.
 Deal price ahead how. Area ten only view society. Wish local behavior successful full.
 Increase draw nor develop himself produce. What gun everyone determine big floor mean. Agree need bill. Race maintain analysis require.', '2026-04-15 10:51:00');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (39, 67, 5, NULL, '2026-05-14 07:19:07');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (221, 83, 3, NULL, '2026-04-12 14:12:46');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (9, 112, 1, 'Black mission use according season successful. Surface she allow why. Try sea understand hope.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (39, 67, 5, NULL, '2026-05-14 07:19:07');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (221, 83, 3, NULL, '2026-04-12 14:12:46');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (9, 112, 1, 'Black mission use according season successful. Surface she allow why. Try sea understand hope.
 Plant sort exactly behind hot city certainly. Physical exist cultural page issue interesting they. Story police six clearly central about suddenly.', '2026-07-08 08:00:42');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (188, 40, 1, 'Whatever which anyone. Pay adult interview old figure cultural fire treat. Career last catch effect include.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (188, 40, 1, 'Whatever which anyone. Pay adult interview old figure cultural fire treat. Career last catch effect include.
 West particular not. End arm miss enough.
 Kind character cup accept fast. Arrive into cold guy friend traditional dark. Could sea late cost.', '2026-05-06 23:19:48');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (126, 21, 4, NULL, '2026-04-29 07:19:41');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (3, 34, 5, 'Daughter sense particularly image piece billion set where. Clear one prepare wish its board speech.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (126, 21, 4, NULL, '2026-04-29 07:19:41');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (3, 34, 5, 'Daughter sense particularly image piece billion set where. Clear one prepare wish its board speech.
 Hit result student yourself heavy. Never green college together never TV around. Possible your wall easy.', '2026-06-01 20:46:40');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (209, 92, 3, 'Mr who technology none. Along give morning day painting yourself amount. Crime wife major threat safe must.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (209, 92, 3, 'Mr who technology none. Along give morning day painting yourself amount. Crime wife major threat safe must.
 No month affect scene PM.
 Or receive that ok position same. Actually majority big leader own within. Will service give religious agency.', '2026-05-06 20:57:36');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (170, 57, 3, 'Cold enough direction series course. Bad project American important share raise wish under. As do course throughout however.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (170, 57, 3, 'Cold enough direction series course. Bad project American important share raise wish under. As do course throughout however.
 We sister know specific. Beat plan issue usually special physical on.
 Civil environmental tend. See kid rock Democrat economic and. Wide moment enjoy expert could.', '2026-08-23 03:18:01');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (219, 63, 4, 'Find exactly who use soldier individual. Later visit create present sing.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (219, 63, 4, 'Find exactly who use soldier individual. Later visit create present sing.
 Force computer I list risk add test. Thousand environmental nature animal fear property listen. Identify top act morning.
 Today meet per seem provide.
 Way southern continue money color. Level energy help until.', '2026-08-06 16:45:32');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (139, 97, 4, 'Everyone born ball experience include. Continue local night wind never believe there understand. Power thousand claim maintain receive next next.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (139, 97, 4, 'Everyone born ball experience include. Continue local night wind never believe there understand. Power thousand claim maintain receive next next.
 Together process control read movement alone. Because however as anything. Each financial trial list minute.', '2026-06-13 21:08:32');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (208, 71, 2, NULL, '2026-07-01 19:37:23');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (230, 6, 4, 'Member during participant determine possible forget plant. Walk yet since throughout whole.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (208, 71, 2, NULL, '2026-07-01 19:37:23');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (230, 6, 4, 'Member during participant determine possible forget plant. Walk yet since throughout whole.
 Position might event occur economic first still. Operation rock drug whom company just.
 Sport increase teacher beat it. Discuss appear reason marriage. Ask office history. Yet everybody worker.', '2026-06-18 13:33:09');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (126, 27, 2, 'Reflect look determine song something learn. Agent indeed serve particularly practice forward. Relationship imagine notice old.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (126, 27, 2, 'Reflect look determine song something learn. Agent indeed serve particularly practice forward. Relationship imagine notice old.
 Significant factor recently order economy despite. Identify remain push little strong he. Town medical government garden.', '2026-06-07 20:42:49');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (178, 32, 2, NULL, '2026-05-24 13:41:55');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (106, 47, 2, 'Food consumer strategy hope policy. Building look military pay.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (178, 32, 2, NULL, '2026-05-24 13:41:55');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (106, 47, 2, 'Food consumer strategy hope policy. Building look military pay.
 National author huge board about doctor result. Shake operation able street meet. Fight make bed. Join throughout near act.
 Five build model since big stay. Truth able many rise maybe person deal. Dog performance allow put.', '2026-06-01 20:54:31');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (40, 93, 5, NULL, '2026-05-29 10:41:28');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (244, 26, 4, NULL, '2026-05-13 18:58:38');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (131, 19, 4, 'Break occur according agreement it. Stock impact wind purpose at garden. Key image source clearly. Really heavy leg operation member.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (40, 93, 5, NULL, '2026-05-29 10:41:28');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (244, 26, 4, NULL, '2026-05-13 18:58:38');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (131, 19, 4, 'Break occur according agreement it. Stock impact wind purpose at garden. Key image source clearly. Really heavy leg operation member.
 Discover real these hit people. Foreign forward society enjoy size his course.', '2026-06-28 08:20:35');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (245, 54, 4, 'New eye eye after industry development figure. Employee black soon hospital traditional they. Partner tend citizen score parent these over.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (245, 54, 4, 'New eye eye after industry development figure. Employee black soon hospital traditional they. Partner tend citizen score parent these over.
 Democratic vote rather be culture. Form keep particularly air American control.', '2026-04-27 02:53:01');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (32, 81, 4, 'Lay west you paper source prevent popular. Rest car that him. Life operation likely foreign later.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (32, 81, 4, 'Lay west you paper source prevent popular. Rest car that him. Life operation likely foreign later.
 Air painting free prove. Mrs person reach top.
 Understand more help onto idea everything building. Hit especially national interview media wrong.', '2026-06-05 14:36:38');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (53, 42, 3, NULL, '2026-05-23 04:01:35');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (155, 46, 4, 'Night as own education still clear little. Lead woman the early.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (53, 42, 3, NULL, '2026-05-23 04:01:35');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (155, 46, 4, 'Night as own education still clear little. Lead woman the early.
 High account large collection next. Direction including wear.
 Put affect present head. Lose a rest group blood office public. Study over community focus why. Study us yourself long sign significant special.', '2026-06-12 22:30:38');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (55, 9, 2, 'Somebody she hot social budget. Voice central son. Field standard middle field.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (55, 9, 2, 'Somebody she hot social budget. Voice central son. Field standard middle field.
 I hand stay note laugh. Different father white sort stage whole. Expert car present herself answer must. Summer red tell.', '2026-06-19 16:32:45');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (46, 89, 4, 'Receive certainly institution individual suffer. Lose sport rock success. Source difficult stock job success.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (46, 89, 4, 'Receive certainly institution individual suffer. Lose sport rock success. Source difficult stock job success.
 After necessary either fly. White base than response war this.
 Rule example add. Movement as practice there. Thousand property point happy cell eight yourself.', '2026-08-14 08:48:12');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (187, 140, 1, 'Theory political stay garden resource stand. Stop mouth tell south.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (187, 140, 1, 'Theory political stay garden resource stand. Stop mouth tell south.
 Really memory structure easy whatever medical why.
 Suggest each share simple leg event. Me same adult recognize. Those catch employee serve public firm especially.', '2026-05-16 10:46:04');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (140, 66, 5, NULL, '2026-08-04 20:05:16');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (211, 8, 4, 'Throughout serve natural read effect. Article wrong sister.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (140, 66, 5, NULL, '2026-08-04 20:05:16');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (211, 8, 4, 'Throughout serve natural read effect. Article wrong sister.
 Offer value answer line. Drug they garden country agree also serve.
 Watch second city home agent. Race shoulder happy get up yeah. Thousand feeling marriage his. Run kind reality strong special organization.', '2026-08-03 15:27:59');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (205, 40, 3, 'Send game information protect quickly help life.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (205, 40, 3, 'Send game information protect quickly help life.
 Language vote southern medical. Minute state apply often that professor.
 Game word town animal hundred thus treat.
 Decade again human employee mouth. Yet couple cold chance pick effort to. Actually local player off ball.', '2026-09-07 21:58:00');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (118, 56, 1, NULL, '2026-06-24 13:41:48');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (79, 22, 4, 'Get kitchen inside career red. Myself blood range. Activity accept say bag tend.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (118, 56, 1, NULL, '2026-06-24 13:41:48');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (79, 22, 4, 'Get kitchen inside career red. Myself blood range. Activity accept say bag tend.
 Bed citizen notice another. Far southern himself help receive decision also.
 Sort chance tax. Benefit make defense surface feel. World listen although answer hour.', '2026-07-16 22:06:38');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (161, 69, 3, NULL, '2026-07-22 23:09:03');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (207, 24, 3, 'Picture lawyer half or though south different. Leave rock plan seek TV should use with. Stand set respond.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (161, 69, 3, NULL, '2026-07-22 23:09:03');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (207, 24, 3, 'Picture lawyer half or though south different. Leave rock plan seek TV should use with. Stand set respond.
 Design station low executive respond I class side. Above firm degree enough deep enough stand. Ago leg allow age. Well light front land dark remember.', '2026-07-24 00:53:32');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (42, 76, 4, 'Short apply watch truth network wind sport.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (42, 76, 4, 'Short apply watch truth network wind sport.
 Threat middle investment reason blue sign maybe.
 Reduce discuss huge five stock. Two camera beyond knowledge reduce might a.
 Who surface the yourself. Wind tree campaign free usually low. Boy actually share very move moment item.', '2026-05-15 10:17:17');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (201, 112, 4, 'Because phone history different claim property. Prevent science air enter right. Good position article key position baby popular should.', '2026-04-14 20:38:14');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (162, 50, 3, NULL, '2026-05-10 00:59:21');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (49, 72, 5, NULL, '2026-07-31 12:43:25');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (28, 80, 3, NULL, '2026-06-27 14:12:21');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (20, 125, 4, 'Huge product social cover wife offer. Goal base miss enjoy. Ever note imagine focus month.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (201, 112, 4, 'Because phone history different claim property. Prevent science air enter right. Good position article key position baby popular should.', '2026-04-14 20:38:14');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (162, 50, 3, NULL, '2026-05-10 00:59:21');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (49, 72, 5, NULL, '2026-07-31 12:43:25');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (28, 80, 3, NULL, '2026-06-27 14:12:21');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (20, 125, 4, 'Huge product social cover wife offer. Goal base miss enjoy. Ever note imagine focus month.
 Kitchen pick serious TV expect certain top. Behind interesting hold behind Mr. Drop pay experience feeling owner.
 Hospital door few low. Rest point on friend inside collection remember American.', '2026-07-05 07:46:00');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (151, 70, 5, 'Work development according something performance window. End would interesting resource sure. Field suddenly husband sometimes.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (151, 70, 5, 'Work development according something performance window. End would interesting resource sure. Field suddenly husband sometimes.
 Or at have leave easy reach. Pick father employee lawyer.', '2026-05-01 09:29:55');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (212, 99, 4, 'Camera step sound must budget their. They southern finally maintain record.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (212, 99, 4, 'Camera step sound must budget their. They southern finally maintain record.
 Imagine southern better population official. Allow between purpose leg. Nothing produce thought picture stock.
 Wait finish economy nice time. Purpose care little. Though woman recently trip.', '2026-08-04 20:09:58');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (8, 96, 5, 'See allow reason each inside focus start. Never whom modern up draw these. Information wrong analysis actually account often.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (8, 96, 5, 'See allow reason each inside focus start. Never whom modern up draw these. Information wrong analysis actually account often.
 Television shoulder memory according.
 A until lay. National however model look.
 Choice training your act audience world my tonight. Number color coach their opportunity her.', '2026-07-25 10:39:11');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (71, 116, 3, NULL, '2026-05-28 12:02:21');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (136, 131, 3, 'Important forward shoulder down on region hospital. Old time star maintain pretty past go.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (71, 116, 3, NULL, '2026-05-28 12:02:21');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (136, 131, 3, 'Important forward shoulder down on region hospital. Old time star maintain pretty past go.
 Participant side second. Growth support mean lay whom.
 Energy pressure positive staff best. Bank outside glass whether never hand. Recently change important.', '2026-07-30 20:28:13');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (17, 136, 3, NULL, '2026-04-26 15:29:24');
-INSERT INTO reviews (product_id, customer_id, rating, comment, review_date) VALUES (150, 47, 5, 'Two ball audience weight when. Phone message front might movie low only. Success office company.
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (17, 136, 3, NULL, '2026-04-26 15:29:24');
+INSERT INTO reviews (product_id, user_id, rating, comment, review_date) VALUES (150, 47, 5, 'Two ball audience weight when. Phone message front might movie low only. Success office company.
 Treat might huge same style woman manage. Would stock newspaper product.
 Soon ball tough expect decision several professor. Land rate price pay form yes. Their instead agency reach environmental stand.', '2026-05-01 10:05:45');
 
