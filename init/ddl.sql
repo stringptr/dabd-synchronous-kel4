@@ -4,6 +4,7 @@ CREATE TABLE Users (
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255),
     phone VARCHAR(30),
     address_line VARCHAR(255),
     city VARCHAR(50),
@@ -13,7 +14,7 @@ CREATE TABLE Users (
 );
 
 CREATE TABLE Admins (
-    user_id INT REFERENCES Users(user_id)
+    admin_id INT REFERENCES Users(user_id)
 );
 
 -- 2. Categories (hierarchical)
