@@ -84,16 +84,16 @@ INSERT INTO warehouses (name, address, city, state, zip_code) VALUES ('Silva-Bel
 INSERT INTO warehouses (name, address, city, state, zip_code) VALUES ('Dyer, Scott and Hawkins DC', '37600 Collins Green Apt. 837', 'New Danielton', 'NM', '38718');
 
 -- Users
-INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, zip_code) VALUES ('Christine', 'Bradley', 'kimbradley@example.com', 'password123', '001-683-669-2353', '7082 Jeffrey Pines Suite 546', 'East Jennifer', 'AL', '22543');
-INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, zip_code) VALUES ('Cameron', 'Jackson', 'vparks@example.org', 'password123', '2558033000', '6739 Cheryl Alley', 'North Johnnyfurt', 'AS', '00848');
-INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, zip_code) VALUES ('Andrew', 'Friedman', 'cruzkaren@example.net', 'password123', '(932)273-7989', '85481 Castillo Green Suite 300', 'New Lisashire', 'NY', '36851');
-INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, zip_code) VALUES ('Gabrielle', 'Wright', 'zamorajennifer@example.org', 'password123', '411.681.5198x545', '34015 Mario Garden', 'Roberttown', 'NV', '42660');
-INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, zip_code) VALUES ('Nicholas', 'Andrews', 'justin46@example.com', 'password123', '420.410.8240x281', '794 Edward Lock', 'North Alyssa', 'NY', '09679');
-INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, zip_code) VALUES ('Tyler', 'Barker', 'taylorclarke@example.com', 'password123', '+1-336-442-3570x0412', '81612 Reed Brook Suite 610', 'South Carolynbury', 'AR', '35169');
-INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, zip_code) VALUES ('Ronald', 'Johnson', 'andersonjohn@example.org', 'password123', '410.212.3296x151', '507 Graham Islands Apt. 446', 'West Dianaberg', 'NV', '55415');
-INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, zip_code) VALUES ('Vanessa', 'Christian', 'patrick01@example.net', 'password123', '453-605-7347', '8617 Nichols Estates', 'Katherineberg', 'GU', '60643');
-INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, zip_code) VALUES ('Elizabeth', 'White', 'ghatfield@example.com', 'password123', '(665)662-2419x76878', '1290 Michael Camp Suite 184', 'Holderberg', 'DC', '31341');
-INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, zip_code) VALUES ('Lawrence', 'Nelson', 'kyleparker@example.com', 'password123', '001-768-621-2156x4952', '64411 Ellen Ridge', 'Schroederside', 'OH', '11027');
+INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, is_admin, zip_code) VALUES ('Christine', 'Bradley', 'kimbradley@example.com', 'password123', '001-683-669-2353', '7082 Jeffrey Pines Suite 546', 'East Jennifer', 'AL', TRUE, '22543');
+INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, is_admin, zip_code) VALUES ('Cameron', 'Jackson', 'vparks@example.org', 'password123', '2558033000', '6739 Cheryl Alley', 'North Johnnyfurt', 'AS', TRUE, '00848');
+INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, is_admin, zip_code) VALUES ('Andrew', 'Friedman', 'cruzkaren@example.net', 'password123', '(932)273-7989', '85481 Castillo Green Suite 300', 'New Lisashire', 'NY', TRUE, '36851');
+INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, is_admin, zip_code) VALUES ('Gabrielle', 'Wright', 'zamorajennifer@example.org', 'password123', '411.681.5198x545', '34015 Mario Garden', 'Roberttown', 'NV', TRUE, '42660');
+INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, is_admin, zip_code) VALUES ('Nicholas', 'Andrews', 'justin46@example.com', 'password123', '420.410.8240x281', '794 Edward Lock', 'North Alyssa', 'NY', TRUE, '09679');
+INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, is_admin, zip_code) VALUES ('Tyler', 'Barker', 'taylorclarke@example.com', 'password123', '+1-336-442-3570x0412', '81612 Reed Brook Suite 610', 'South Carolynbury', 'AR', TRUE, '35169');
+INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, is_admin, zip_code) VALUES ('Ronald', 'Johnson', 'andersonjohn@example.org', 'password123', '410.212.3296x151', '507 Graham Islands Apt. 446', 'West Dianaberg', 'NV', TRUE, '55415');
+INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, is_admin, zip_code) VALUES ('Vanessa', 'Christian', 'patrick01@example.net', 'password123', '453-605-7347', '8617 Nichols Estates', 'Katherineberg', 'GU', TRUE, '60643');
+INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, is_admin, zip_code) VALUES ('Elizabeth', 'White', 'ghatfield@example.com', 'password123', '(665)662-2419x76878', '1290 Michael Camp Suite 184', 'Holderberg', 'DC', TRUE, '31341');
+INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, is_admin, zip_code) VALUES ('Lawrence', 'Nelson', 'kyleparker@example.com', 'password123', '001-768-621-2156x4952', '64411 Ellen Ridge', 'Schroederside', 'OH', TRUE, '11027');
 INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, zip_code) VALUES ('Amanda', 'Ford', 'vincentroy@example.com', 'password123', '659.848.8218', '6405 Lisa Cape', 'North Eugene', 'FM', '49137');
 INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, zip_code) VALUES ('Larry', 'Douglas', 'christopher23@example.org', 'password123', '960-449-8603', '860 James Circle', 'North Brooke', 'OH', '78125');
 INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, zip_code) VALUES ('Cindy', 'Gaines', 'millerlindsey@example.org', 'password123', '9348713171', '162 Sutton Ridges', 'Lake Williamville', 'OR', '85437');
@@ -234,18 +234,6 @@ INSERT INTO Users (first_name, last_name, email, password, phone, address_line, 
 INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, zip_code) VALUES ('Julie', 'Tyler', 'christopher08@example.com', 'password123', '532-871-6303x356', '10009 Alicia Ranch', 'North Angela', 'NC', '15437');
 INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, zip_code) VALUES ('Jessica', 'Pacheco', 'melissa80@example.org', 'password123', '635.541.5892x90930', '6136 Jackson Row Apt. 812', 'Lake Cynthia', 'NC', '09253');
 INSERT INTO Users (first_name, last_name, email, password, phone, address_line, city, state, zip_code) VALUES ('Michael', 'Riggs', 'kimberly47@example.org', 'password123', '(931)510-5833x096', '842 Angela Crossing Suite 269', 'South Yolanda', 'VA', '47159');
-
--- Admins
-INSERT INTO Admins (admin_id) VALUES (1);
-INSERT INTO Admins (admin_id) VALUES (2);
-INSERT INTO Admins (admin_id) VALUES (3);
-INSERT INTO Admins (admin_id) VALUES (4);
-INSERT INTO Admins (admin_id) VALUES (5);
-INSERT INTO Admins (admin_id) VALUES (6);
-INSERT INTO Admins (admin_id) VALUES (7);
-INSERT INTO Admins (admin_id) VALUES (8);
-INSERT INTO Admins (admin_id) VALUES (9);
-INSERT INTO Admins (admin_id) VALUES (10);
 
 -- Coupons
 INSERT INTO coupons (code, description, discount_type, discount_value, valid_from, valid_to, usage_limit) VALUES ('SAVE10', 'If magazine look term.', 'Fixed', 14.84, '2026-07-19', '2026-08-23', 27);

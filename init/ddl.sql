@@ -10,11 +10,8 @@ CREATE TABLE Users (
     city VARCHAR(50),
     state VARCHAR(50),
     zip_code VARCHAR(20),
+    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE Admins (
-    admin_id INT REFERENCES Users(user_id)
 );
 
 -- 2. Categories (hierarchical)
