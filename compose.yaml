@@ -1,29 +1,139 @@
 services:
   postgres:
     container_name: postgres
-    image: docker.io/postgres:18.6-alpine3.24
+    image: docker.io/postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}:postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}:postgres
-      POSTGRES_DB: ${POSTGRES_DB}:postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
     env_file: .env
     ports:
       - "5432:5432"
     volumes:
-      - ./postgres:/var/lib/postgresql:z
+      - postgres_data:/var/lib/postgresql/data
       - ./init/ddl.sql:/docker-entrypoint-initdb.d/1-ddl.sql:ro
       - ./init/insert_data.sql:/docker-entrypoint-initdb.d/2-data.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U primary -d postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres}"]
       interval: 5s
       timeout: 5s
       retries: 10
+
+  auth-service:
+    build:
+      context: ./auth_service
+    image: auth-service:latest
+    env_file: .env
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=${POSTGRES_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - DB_NAME=${POSTGRES_DB:-postgres}
+      - JWT_SECRET=${JWT_SECRET:-supersecret}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  product-service-1:
+    build:
+      context: ./product_service
+    image: product-service:latest
+    env_file: .env
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=${POSTGRES_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - DB_NAME=${POSTGRES_DB:-postgres}
+      - INSTANCE_NAME=product-service-1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  product-service-2:
+    build:
+      context: ./product_service
+    image: product-service:latest
+    env_file: .env
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=${POSTGRES_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - DB_NAME=${POSTGRES_DB:-postgres}
+      - INSTANCE_NAME=product-service-2
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  order-service:
+    build:
+      context: ./order_service
+    image: order-service:latest
+    env_file: .env
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=${POSTGRES_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - DB_NAME=${POSTGRES_DB:-postgres}
+      - PRODUCT_SERVICE_URL=http://nginx/api/products
+    depends_on:
+      postgres:
+        condition: service_healthy
+      product-service-1:
+        condition: service_healthy
+      product-service-2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+    image: frontend:latest
+    depends_on:
+      - auth-service
+      - product-service-1
+      - order-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   nginx:
     container_name: nginx
     image: docker.io/nginx:1.31.4-alpine3.24
     ports:
-      - "8080:80"
+      - "8081:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      product-service-1:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
