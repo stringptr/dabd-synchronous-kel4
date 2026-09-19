@@ -12,3 +12,11 @@ venv.bak/
 test_*.db
 frontend/node_modules/
 frontend/dist/
+
+# Temporary database recovery and draft scripts
+/current_schema.sql
+/recover_reorder_level.sql
+/transactional_recovery.sql
+/draft_test_security.py
+/draft_test_safeguard.py
+/test_db.py

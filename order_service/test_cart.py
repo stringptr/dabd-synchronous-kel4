@@ -1,10 +1,11 @@
-﻿import os
+import os
 os.environ["INTERNAL_API_KEY"] = "testinternal"
 
 import pytest
+import uuid
 from decimal import Decimal
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine import make_url
 from concurrent.futures import ThreadPoolExecutor
@@ -244,23 +245,41 @@ def test_authoritative_price_calculation_decimal(monkeypatch):
 
 # 14. Concurrent attempts to create the same user's cart
 def test_concurrent_cart_creation():
-    user_id = 70
-    results = []
+    unique_suffix = uuid.uuid4().hex[:8]
+    test_email = f"concurrent_test_{unique_suffix}@example.com"
     
-    def create_cart_task():
-        # Create separate session for each concurrent worker
-        session = TestingSessionLocal()
-        try:
-            cart = get_or_create_cart(session, user_id)
-            results.append(cart.cart_id)
-        finally:
-            session.close()
+    # Create a dedicated, uniquely identified test user in isolated test_db
+    with engine.begin() as conn:
+        res = conn.execute(text("""
+            INSERT INTO users (first_name, last_name, email, password, is_admin)
+            VALUES ('Concurrent', 'Tester', :email, 'dummy_hash', false)
+            RETURNING user_id
+        """), {"email": test_email})
+        user_id = res.scalar()
 
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        futures = [executor.submit(create_cart_task) for _ in range(5)]
-        for f in futures:
-            f.result()
+    results = []
+    try:
+        def create_cart_task():
+            # Create separate session for each concurrent worker
+            session = TestingSessionLocal()
+            try:
+                cart = get_or_create_cart(session, user_id)
+                results.append(cart.cart_id)
+            finally:
+                session.close()
 
-    # All threads must receive the EXACT same cart_id without IntegrityError breaking
-    assert len(results) == 5
-    assert len(set(results)) == 1
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = [executor.submit(create_cart_task) for _ in range(5)]
+            for f in futures:
+                f.result()
+
+        # All threads must receive the EXACT same cart_id without IntegrityError breaking
+        assert len(results) == 5
+        assert len(set(results)) == 1
+    finally:
+        # Guarantee removal of all test-created data even if assertions fail
+        with engine.begin() as conn:
+            conn.execute(text("DELETE FROM cart_items WHERE cart_id IN (SELECT cart_id FROM carts WHERE user_id = :uid)"), {"uid": user_id})
+            conn.execute(text("DELETE FROM carts WHERE user_id = :uid"), {"uid": user_id})
+            conn.execute(text("DELETE FROM users WHERE user_id = :uid"), {"uid": user_id})
+

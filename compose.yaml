@@ -4,19 +4,19 @@ services:
     image: docker.io/postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
       POSTGRES_TEST_DB: ${POSTGRES_TEST_DB:-test_db}
     env_file: .env
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init/ddl.sql:/docker-entrypoint-initdb.d/1-ddl.sql:ro
       - ./init/insert_data.sql:/docker-entrypoint-initdb.d/2-data.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?POSTGRES_USER is required} -d ${POSTGRES_DB:?POSTGRES_DB is required}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -28,11 +28,11 @@ services:
     env_file: .env
     environment:
       - DB_HOST=postgres
-      - DB_USER=${POSTGRES_USER:-postgres}
-      - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - DB_NAME=${POSTGRES_DB:-postgres}
-      - JWT_SECRET=${JWT_SECRET:-supersecret}
-      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-internal_secret}
+      - DB_USER=${POSTGRES_USER:?POSTGRES_USER is required}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      - DB_NAME=${POSTGRES_DB:?POSTGRES_DB is required}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:?INTERNAL_API_KEY is required}
     depends_on:
       postgres:
         condition: service_healthy
@@ -49,11 +49,11 @@ services:
     env_file: .env
     environment:
       - DB_HOST=postgres
-      - DB_USER=${POSTGRES_USER:-postgres}
-      - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - DB_NAME=${POSTGRES_DB:-postgres}
+      - DB_USER=${POSTGRES_USER:?POSTGRES_USER is required}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      - DB_NAME=${POSTGRES_DB:?POSTGRES_DB is required}
       - INSTANCE_NAME=product-service-1
-      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-internal_secret}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:?INTERNAL_API_KEY is required}
     depends_on:
       postgres:
         condition: service_healthy
@@ -70,11 +70,11 @@ services:
     env_file: .env
     environment:
       - DB_HOST=postgres
-      - DB_USER=${POSTGRES_USER:-postgres}
-      - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - DB_NAME=${POSTGRES_DB:-postgres}
+      - DB_USER=${POSTGRES_USER:?POSTGRES_USER is required}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      - DB_NAME=${POSTGRES_DB:?POSTGRES_DB is required}
       - INSTANCE_NAME=product-service-2
-      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-internal_secret}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:?INTERNAL_API_KEY is required}
     depends_on:
       postgres:
         condition: service_healthy
@@ -91,11 +91,11 @@ services:
     env_file: .env
     environment:
       - DB_HOST=postgres
-      - DB_USER=${POSTGRES_USER:-postgres}
-      - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - DB_NAME=${POSTGRES_DB:-postgres}
+      - DB_USER=${POSTGRES_USER:?POSTGRES_USER is required}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      - DB_NAME=${POSTGRES_DB:?POSTGRES_DB is required}
       - PRODUCT_SERVICE_URL=http://nginx/api/products
-      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-internal_secret}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:?INTERNAL_API_KEY is required}
     depends_on:
       postgres:
         condition: service_healthy
