@@ -21,6 +21,8 @@ function App() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkoutKey, setCheckoutKey] = useState('');
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -257,14 +259,58 @@ function App() {
     setView('login');
   };
 
+  const handleCheckout = () => {
+    setError('');
+    setIsCheckingOut(true);
+    // Retain existing key on retry, or generate a fresh key if starting anew
+    const key = checkoutKey || (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'chk-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9));
+    setCheckoutKey(key);
+
+    fetch('/api/checkout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'Idempotency-Key': key
+      },
+      body: JSON.stringify({})
+    })
+    .then(async res => {
+      if (!res.ok) {
+        const errData = await res.json();
+        const detailMsg = typeof errData.detail === 'object' 
+          ? (errData.detail.failure_reason || errData.detail.message || JSON.stringify(errData.detail))
+          : (errData.detail || "Checkout failed");
+        throw new Error(detailMsg);
+      }
+      return res.json();
+    })
+    .then(data => {
+      setCheckoutKey(''); // clear key on success
+      loadCart();
+      loadOrders();
+      loadProducts();
+      setSuccess(`Checkout successful! Order #${data.order_id || ''} placed.`);
+      setTimeout(() => setSuccess(''), 4000);
+    })
+    .catch(err => {
+      setError("Checkout error: " + err.message + " (You can retry with the same key)");
+      setTimeout(() => setError(''), 6000);
+    })
+    .finally(() => setIsCheckingOut(false));
+  };
+
   const buyProduct = (product_id) => {
     if (!window.confirm("Are you sure you want to order this product?")) return;
+    
+    const key = (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'ord-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9));
     
     fetch('/api/orders', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'Idempotency-Key': key
       },
       body: JSON.stringify({ items: [{ product_id, quantity: 1 }] })
     })
@@ -511,6 +557,25 @@ function App() {
               <div style={{ color: '#28a745', fontWeight: 'bold', fontSize: '20px' }}>
                 ${parseFloat(cart.estimated_total || 0).toFixed(2)}
               </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '15px', gap: '10px' }}>
+              {checkoutKey && (
+                <button 
+                  onClick={() => setCheckoutKey('')} 
+                  className="btn-link"
+                  style={{ color: '#666', fontSize: '13px' }}
+                >
+                  Reset Key
+                </button>
+              )}
+              <button 
+                onClick={handleCheckout} 
+                disabled={isCheckingOut || !cart.items || cart.items.length === 0}
+                className="btn-primary"
+                style={{ padding: '10px 24px', fontSize: '15px', fontWeight: 'bold' }}
+              >
+                {isCheckingOut ? "Processing Checkout..." : (checkoutKey ? "Retry Checkout" : "Proceed to Checkout")}
+              </button>
             </div>
           </div>
         )}

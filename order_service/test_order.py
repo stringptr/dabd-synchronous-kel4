@@ -75,19 +75,29 @@ def test_circuit_breaker(monkeypatch):
 def test_create_order_unauthenticated():
     response = client.post("/orders", json={
         "items": [{"product_id": 1, "quantity": 1}]
-    })
+    }, headers={"Idempotency-Key": "unauth-key-1"})
     assert response.status_code == 401
+
+def test_create_order_missing_idempotency_key():
+    response = client.post("/orders", json={
+        "items": [{"product_id": 1, "quantity": 1}]
+    }, headers={"X-User-Sub": "1", "X-User-Role": "user"})
+    assert response.status_code == 400
+    assert "Idempotency-Key header is required" in response.json()["detail"]
 
 def test_create_order_success(monkeypatch):
     def mock_fetch(product_id, req_id, auth):
-        return {"price": 100.0, "total_stock": 5}
+        return {"price": 100.0, "name": "Product 1"}
     monkeypatch.setattr(main, "fetch_product", mock_fetch)
-    # reset breaker if open
     main.breaker.close()
     
+    def mock_reserve(op_id, items):
+        return ("ACTIVE", {"status": "ACTIVE"}, None, None, False)
+    monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
+
     response = client.post("/orders", json={
         "items": [{"product_id": 1, "quantity": 2}]
-    }, headers={"X-User-Sub": "1", "X-User-Role": "user"})
+    }, headers={"X-User-Sub": "1", "X-User-Role": "user", "Idempotency-Key": "legacy-order-key-1"})
     
     assert response.status_code == 200
     data = response.json()
@@ -95,23 +105,32 @@ def test_create_order_success(monkeypatch):
 
 def test_create_order_insufficient_stock(monkeypatch):
     def mock_fetch(product_id, req_id, auth):
-        return {"price": 100.0, "total_stock": 1} # Only 1 in stock
+        return {"price": 100.0, "name": "Product 1"}
     monkeypatch.setattr(main, "fetch_product", mock_fetch)
     
+    def mock_reserve(op_id, items):
+        return ("FAILED", {"status": "FAILED", "failure_code": "INSUFFICIENT_STOCK"}, "INSUFFICIENT_STOCK", "Insufficient stock", False)
+    monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
+
     response = client.post("/orders", json={
         "items": [{"product_id": 1, "quantity": 2}]
-    }, headers={"X-User-Sub": "1", "X-User-Role": "user"})
+    }, headers={"X-User-Sub": "1", "X-User-Role": "user", "Idempotency-Key": "legacy-order-fail-key"})
     
     assert response.status_code == 400
 
 def test_get_orders(monkeypatch):
     def mock_fetch(product_id, req_id, auth):
-        return {"price": 100.0, "total_stock": 5}
+        return {"price": 100.0, "name": "Product 1"}
     monkeypatch.setattr(main, "fetch_product", mock_fetch)
     main.breaker.close()
+    
+    def mock_reserve(op_id, items):
+        return ("ACTIVE", {"status": "ACTIVE"}, None, None, False)
+    monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
+
     client.post("/orders", json={
         "items": [{"product_id": 1, "quantity": 1}]
-    }, headers={"X-User-Sub": "1", "X-User-Role": "user"})
+    }, headers={"X-User-Sub": "1", "X-User-Role": "user", "Idempotency-Key": "get-orders-key-1"})
 
     response = client.get("/orders", headers={"X-User-Sub": "1", "X-User-Role": "user"})
     assert response.status_code == 200
@@ -123,14 +142,18 @@ def test_get_orders_unauthenticated():
 
 def test_order_isolation_between_users(monkeypatch):
     def mock_fetch(product_id, req_id, auth):
-        return {"price": 50.0, "total_stock": 10}
+        return {"price": 50.0, "name": "Product 1"}
     monkeypatch.setattr(main, "fetch_product", mock_fetch)
     main.breaker.close()
     
+    def mock_reserve(op_id, items):
+        return ("ACTIVE", {"status": "ACTIVE"}, None, None, False)
+    monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
+
     # User 1 creates an order
     res = client.post("/orders", json={
         "items": [{"product_id": 1, "quantity": 1}]
-    }, headers={"X-User-Sub": "1", "X-User-Role": "user"})
+    }, headers={"X-User-Sub": "1", "X-User-Role": "user", "Idempotency-Key": "user1-order-key"})
     assert res.status_code == 200
     created_order_id = res.json()["order_id"]
 
