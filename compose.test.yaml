@@ -1,0 +1,82 @@
+name: stage2b-test
+
+services:
+  test-postgres:
+    image: docker.io/postgres:16-alpine
+    container_name: stage2b-test-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: testpassword
+      POSTGRES_DB: test_db
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - test_postgres_data:/var/lib/postgresql/data
+      - ./init/ddl.sql:/docker-entrypoint-initdb.d/1-ddl.sql:ro
+      - ./init/insert_data.sql:/docker-entrypoint-initdb.d/2-data.sql:ro
+    networks:
+      - stage2b-test-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d test_db"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  test-product-1:
+    build:
+      context: ./product_service
+    image: test-product-service:stage2b
+    container_name: stage2b-test-product-1
+    environment:
+      - DB_HOST=test-postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=testpassword
+      - DB_NAME=test_db
+      - DB_PORT=5432
+      - INSTANCE_NAME=test-product-1
+      - INTERNAL_API_KEY=testinternal
+    ports:
+      - "127.0.0.1:8001:8000"
+    networks:
+      - stage2b-test-net
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  test-product-2:
+    build:
+      context: ./product_service
+    image: test-product-service:stage2b
+    container_name: stage2b-test-product-2
+    environment:
+      - DB_HOST=test-postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=testpassword
+      - DB_NAME=test_db
+      - DB_PORT=5432
+      - INSTANCE_NAME=test-product-2
+      - INTERNAL_API_KEY=testinternal
+    ports:
+      - "127.0.0.1:8002:8000"
+    networks:
+      - stage2b-test-net
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+networks:
+  stage2b-test-net:
+    driver: bridge
+
+volumes:
+  test_postgres_data:

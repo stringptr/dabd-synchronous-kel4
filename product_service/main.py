@@ -3,7 +3,7 @@ import uuid
 import json
 import hashlib
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, Header
@@ -72,13 +72,14 @@ class StockReservation(Base):
     reservation_id = Column(Integer, primary_key=True, autoincrement=True)
     operation_id = Column(String(100), unique=True, nullable=False)
     request_fingerprint = Column(String(64), nullable=False)
-    status = Column(String(20), nullable=False) # ACTIVE, CONFIRMED, RELEASED, EXPIRED
-    expires_at = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"), nullable=False)
-    updated_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"), onupdate=datetime.utcnow, nullable=False)
+    status = Column(String(20), nullable=False) # PENDING, ACTIVE, CONFIRMED, RELEASED, EXPIRED, FAILED
+    failure_reason = Column(String(255), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=text("clock_timestamp()"), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=text("clock_timestamp()"), onupdate=func.clock_timestamp(), nullable=False)
 
     __table_args__ = (
-        CheckConstraint("status IN ('ACTIVE', 'CONFIRMED', 'RELEASED', 'EXPIRED')", name="chk_stock_reservations_status"),
+        CheckConstraint("status IN ('PENDING', 'ACTIVE', 'CONFIRMED', 'RELEASED', 'EXPIRED', 'FAILED')", name="chk_stock_reservations_status"),
     )
 
     items = relationship("StockReservationItem", back_populates="reservation", cascade="all, delete-orphan")
@@ -90,7 +91,7 @@ class StockReservationItem(Base):
     product_id = Column(Integer, nullable=False)
     warehouse_id = Column(Integer, nullable=False)
     quantity = Column(Integer, nullable=False)
-    created_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=text("clock_timestamp()"), nullable=False)
 
     __table_args__ = (
         ForeignKeyConstraint(
@@ -168,10 +169,11 @@ class ReservationResponse(BaseModel):
     reservation_id: int
     operation_id: str
     status: str
+    failure_reason: Optional[str] = None
     expires_at: datetime
     created_at: datetime
     updated_at: datetime
-    items: List[ReservationItemOut]
+    items: List[ReservationItemOut] = []
 
 # Internal security
 INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY")
@@ -192,16 +194,16 @@ def require_admin(x_user_role: Optional[str] = Header(None)):
         raise HTTPException(status_code=403, detail="Forbidden: Admin access required")
     return True
 
-def normalize_datetime(dt: Optional[datetime]) -> Optional[datetime]:
-    if dt is not None and dt.tzinfo is not None:
-        return dt.replace(tzinfo=None)
-    return dt
+def to_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
-def get_db_time(db: Session) -> datetime:
-    ts = db.execute(text("SELECT CURRENT_TIMESTAMP")).scalar()
+def get_db_clock_time(db: Session) -> datetime:
+    ts = db.execute(text("SELECT clock_timestamp()")).scalar()
     if not isinstance(ts, datetime):
-        ts = datetime.utcnow()
-    return normalize_datetime(ts)
+        ts = datetime.now(timezone.utc)
+    return to_utc(ts)
 
 def compute_request_fingerprint(items: List[ReservationItemIn]) -> str:
     # Sort by product_id ascending to generate canonical JSON
@@ -227,12 +229,13 @@ def build_reservation_response(res: StockReservation) -> ReservationResponse:
             warehouse_id=item.warehouse_id,
             quantity=item.quantity
         )
-        for item in res.items
+        for item in (res.items or [])
     ]
     return ReservationResponse(
         reservation_id=res.reservation_id,
         operation_id=res.operation_id,
         status=res.status,
+        failure_reason=res.failure_reason,
         expires_at=res.expires_at,
         created_at=res.created_at,
         updated_at=res.updated_at,
@@ -309,24 +312,57 @@ def create_reservation(req: ReservationCreateRequest, response: Response, db: Se
 
     fingerprint = compute_request_fingerprint(req.items)
 
-    # 2. Check if operation_id already exists (idempotency check)
+    # 2. Check if operation_id already exists (fast-path for sequential replay)
     existing = db.query(StockReservation).filter(StockReservation.operation_id == req.operation_id).first()
     if existing:
-        if existing.request_fingerprint == fingerprint:
-            response.status_code = status.HTTP_200_OK
-            return build_reservation_response(existing)
-        else:
+        if existing.request_fingerprint != fingerprint:
             raise HTTPException(status_code=409, detail="Operation ID reused with conflicting payload")
+        if existing.status == "FAILED":
+            raise HTTPException(status_code=409, detail=existing.failure_reason or "Reservation previously failed")
+        response.status_code = status.HTTP_200_OK
+        return build_reservation_response(existing)
 
+    # 3. Concurrency-safe operation serialization:
+    # Insert preliminary placeholder row with status='PENDING' and immediately flush to serialize on UNIQUE(operation_id)
+    now_ts = get_db_clock_time(db)
+    placeholder = StockReservation(
+        operation_id=req.operation_id,
+        request_fingerprint=fingerprint,
+        status="PENDING",
+        expires_at=now_ts,
+        created_at=now_ts,
+        updated_at=now_ts
+    )
+    db.add(placeholder)
+    try:
+        db.flush()
+    except IntegrityError:
+        # A concurrent request won the race to insert this operation_id
+        db.rollback()
+        existing = db.query(StockReservation).filter(StockReservation.operation_id == req.operation_id).first()
+        if not existing:
+            raise HTTPException(status_code=409, detail="Concurrent reservation conflict; please retry")
+        if existing.request_fingerprint != fingerprint:
+            raise HTTPException(status_code=409, detail="Operation ID reused with conflicting payload")
+        if existing.status == "FAILED":
+            raise HTTPException(status_code=409, detail=existing.failure_reason or "Reservation previously failed")
+        response.status_code = status.HTTP_200_OK
+        return build_reservation_response(existing)
+
+    # We own the operation_id lock.
     sorted_pids = sorted(pids)
 
-    # 3. Verify all requested products exist
+    # 4. Verify all requested products exist (Definitive business failure check)
     existing_pids = set(p[0] for p in db.query(Product.product_id).filter(Product.product_id.in_(sorted_pids)).all())
     missing_pids = set(sorted_pids) - existing_pids
     if missing_pids:
-        raise HTTPException(status_code=404, detail=f"Products not found: {list(missing_pids)}")
+        placeholder.status = "FAILED"
+        placeholder.failure_reason = f"Products not found: {list(missing_pids)}"
+        placeholder.updated_at = get_db_clock_time(db)
+        db.commit()
+        raise HTTPException(status_code=404, detail=placeholder.failure_reason)
 
-    # 4. Acquire row-level locks on all relevant inventory rows in deterministic global order
+    # 5. Acquire row-level locks on inventory in global deterministic order
     inv_rows = db.query(Inventory).filter(
         Inventory.product_id.in_(sorted_pids)
     ).order_by(Inventory.product_id.asc(), Inventory.warehouse_id.asc()).with_for_update().all()
@@ -335,17 +371,19 @@ def create_reservation(req: ReservationCreateRequest, response: Response, db: Se
     for inv in inv_rows:
         inv_by_product.setdefault(inv.product_id, []).append(inv)
 
-    # 5. Check all-or-nothing stock availability across warehouses
+    # 6. Check stock availability across warehouses (Definitive business failure check)
     allocations = []
     for item in req.items:
         product_inv = inv_by_product.get(item.product_id, [])
         total_avail = sum(get_available_stock(inv) for inv in product_inv)
         if total_avail < item.quantity:
-            db.rollback()
-            raise HTTPException(
-                status_code=409,
-                detail=f"Insufficient stock for product {item.product_id}: requested {item.quantity}, available {total_avail}"
-            )
+            # Persist definitive business failure
+            placeholder.status = "FAILED"
+            placeholder.failure_reason = f"Insufficient stock for product {item.product_id}: requested {item.quantity}, available {total_avail}"
+            placeholder.updated_at = get_db_clock_time(db)
+            db.commit()
+            raise HTTPException(status_code=409, detail=placeholder.failure_reason)
+
         needed = item.quantity
         for inv in product_inv:
             avail = get_available_stock(inv)
@@ -356,48 +394,42 @@ def create_reservation(req: ReservationCreateRequest, response: Response, db: Se
                 if needed == 0:
                     break
 
-    # 6. Apply reservation increments
-    now_ts = get_db_time(db)
-    expires_at = now_ts + timedelta(minutes=DEFAULT_RESERVATION_TIMEOUT_MINUTES)
+    # 7. Apply reservation increments
+    activation_time = get_db_clock_time(db)
+    expires_at = activation_time + timedelta(minutes=DEFAULT_RESERVATION_TIMEOUT_MINUTES)
 
-    reservation = StockReservation(
-        operation_id=req.operation_id,
-        request_fingerprint=fingerprint,
-        status="ACTIVE",
-        expires_at=expires_at,
-        created_at=now_ts,
-        updated_at=now_ts
-    )
-    db.add(reservation)
-    db.flush()
+    placeholder.status = "ACTIVE"
+    placeholder.expires_at = expires_at
+    placeholder.updated_at = activation_time
 
     for inv, alloc in allocations:
         inv.reserved_quantity += alloc
         res_item = StockReservationItem(
-            reservation_id=reservation.reservation_id,
+            reservation_id=placeholder.reservation_id,
             product_id=inv.product_id,
             warehouse_id=inv.warehouse_id,
             quantity=alloc,
-            created_at=now_ts
+            created_at=activation_time
         )
         db.add(res_item)
 
     try:
         db.commit()
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()
         existing = db.query(StockReservation).filter(StockReservation.operation_id == req.operation_id).first()
         if existing:
-            if existing.request_fingerprint == fingerprint:
-                response.status_code = status.HTTP_200_OK
-                return build_reservation_response(existing)
-            else:
+            if existing.request_fingerprint != fingerprint:
                 raise HTTPException(status_code=409, detail="Operation ID reused with conflicting payload")
-        raise HTTPException(status_code=409, detail="Concurrent reservation conflict")
+            if existing.status == "FAILED":
+                raise HTTPException(status_code=409, detail=existing.failure_reason or "Reservation failed")
+            response.status_code = status.HTTP_200_OK
+            return build_reservation_response(existing)
+        raise HTTPException(status_code=409, detail=f"Concurrent reservation conflict: {str(e)}")
 
-    db.refresh(reservation)
+    db.refresh(placeholder)
     response.status_code = status.HTTP_201_CREATED
-    return build_reservation_response(reservation)
+    return build_reservation_response(placeholder)
 
 @app.get("/internal/reservations/{operation_id}", response_model=ReservationResponse, dependencies=[Depends(require_internal)])
 def get_reservation(operation_id: str, db: Session = Depends(get_db)):
@@ -421,30 +453,36 @@ def confirm_reservation(operation_id: str, db: Session = Depends(get_db)):
     if res.status == "EXPIRED":
         raise HTTPException(status_code=409, detail="Cannot confirm reservation: already expired")
 
-    now_ts = get_db_time(db)
-    expires_at = normalize_datetime(res.expires_at)
+    if res.status == "FAILED":
+        raise HTTPException(status_code=409, detail=f"Cannot confirm reservation: {res.failure_reason or 'failed'}")
 
-    # Check expiration race using authoritative database time
-    if expires_at and now_ts >= expires_at:
+    sorted_keys = sorted([(item.product_id, item.warehouse_id, item.quantity) for item in res.items], key=lambda x: (x[0], x[1]))
+    inv_map = {}
+    for pid, wid, qty in sorted_keys:
+        inv = db.query(Inventory).filter(Inventory.product_id == pid, Inventory.warehouse_id == wid).with_for_update().first()
+        if not inv:
+            raise HTTPException(status_code=500, detail=f"Inventory record missing for product {pid}, warehouse {wid}")
+        inv_map[(pid, wid)] = inv
+
+    # Authoritative database wall-clock time AFTER acquiring all necessary locks
+    now_ts = get_db_clock_time(db)
+
+    # Check expiration boundary using authoritative clock
+    if now_ts >= to_utc(res.expires_at):
         # Finalize expiration and release hold atomically
-        sorted_keys = sorted([(item.product_id, item.warehouse_id, item.quantity) for item in res.items], key=lambda x: (x[0], x[1]))
         for pid, wid, qty in sorted_keys:
-            inv = db.query(Inventory).filter(Inventory.product_id == pid, Inventory.warehouse_id == wid).with_for_update().first()
-            if inv:
-                inv.reserved_quantity -= qty
-                if inv.reserved_quantity < 0:
-                    raise HTTPException(status_code=500, detail="Data integrity violation: reserved_quantity became negative")
+            inv = inv_map[(pid, wid)]
+            inv.reserved_quantity -= qty
+            if inv.reserved_quantity < 0:
+                raise HTTPException(status_code=500, detail="Data integrity violation: reserved_quantity became negative")
         res.status = "EXPIRED"
         res.updated_at = now_ts
         db.commit()
         raise HTTPException(status_code=409, detail="Reservation has expired")
 
     # Valid confirmation: permanently deduct both quantity_on_hand and reserved_quantity
-    sorted_keys = sorted([(item.product_id, item.warehouse_id, item.quantity) for item in res.items], key=lambda x: (x[0], x[1]))
     for pid, wid, qty in sorted_keys:
-        inv = db.query(Inventory).filter(Inventory.product_id == pid, Inventory.warehouse_id == wid).with_for_update().first()
-        if not inv:
-            raise HTTPException(status_code=500, detail=f"Inventory record missing for product {pid}, warehouse {wid}")
+        inv = inv_map[(pid, wid)]
         inv.quantity_on_hand -= qty
         inv.reserved_quantity -= qty
         if inv.quantity_on_hand < 0 or inv.reserved_quantity < 0:
@@ -471,13 +509,22 @@ def release_reservation(operation_id: str, db: Session = Depends(get_db)):
     if res.status == "EXPIRED":
         raise HTTPException(status_code=409, detail="Cannot release reservation: already expired")
 
-    now_ts = get_db_time(db)
+    if res.status == "FAILED":
+        raise HTTPException(status_code=409, detail=f"Cannot release reservation: {res.failure_reason or 'failed'}")
+
+    sorted_keys = sorted([(item.product_id, item.warehouse_id, item.quantity) for item in res.items], key=lambda x: (x[0], x[1]))
+    inv_map = {}
+    for pid, wid, qty in sorted_keys:
+        inv = db.query(Inventory).filter(Inventory.product_id == pid, Inventory.warehouse_id == wid).with_for_update().first()
+        if inv:
+            inv_map[(pid, wid)] = inv
+
+    now_ts = get_db_clock_time(db)
 
     # Release hold if ACTIVE
     if res.status == "ACTIVE":
-        sorted_keys = sorted([(item.product_id, item.warehouse_id, item.quantity) for item in res.items], key=lambda x: (x[0], x[1]))
         for pid, wid, qty in sorted_keys:
-            inv = db.query(Inventory).filter(Inventory.product_id == pid, Inventory.warehouse_id == wid).with_for_update().first()
+            inv = inv_map.get((pid, wid))
             if inv:
                 inv.reserved_quantity -= qty
                 if inv.reserved_quantity < 0:

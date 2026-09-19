@@ -2,6 +2,9 @@ import os
 os.environ["INTERNAL_API_KEY"] = "testinternal"
 
 import uuid
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 import pytest
 from datetime import datetime, timedelta
 from fastapi.testclient import TestClient
@@ -168,8 +171,10 @@ def test_create_reservation_insufficient_stock_rollback(test_tracker):
         inv2 = conn.execute(text("SELECT reserved_quantity FROM inventory WHERE product_id = :pid"), {"pid": pid2}).scalar()
         assert inv1 == 0
         assert inv2 == 0
-        res_count = conn.execute(text("SELECT count(*) FROM stock_reservations WHERE operation_id = :op"), {"op": op_id}).scalar()
-        assert res_count == 0
+        row = conn.execute(text("SELECT status, failure_reason FROM stock_reservations WHERE operation_id = :op"), {"op": op_id}).fetchone()
+        assert row is not None
+        assert row[0] == "FAILED"
+        assert "Insufficient stock" in row[1]
 
 # 4. Nonexistent product returns 404
 def test_create_reservation_nonexistent_product():
@@ -496,3 +501,229 @@ def test_public_product_stock_reflection(test_tracker):
     # Stock after confirm remains 7
     p_conf = client.get(f"/products/{pid}").json()
     assert p_conf["total_stock"] == 7
+
+# 18. Failed reservation durable idempotency
+def test_failed_reservation_durable_idempotency(test_tracker):
+    pids, op_ids = test_tracker
+    pid = create_test_product(pids, warehouses_stock={1: 2})
+    op_id = f"op_durable_fail_{uuid.uuid4().hex[:8]}"
+    op_ids.append(op_id)
+
+    # Attempt to reserve 5 units when only 2 exist -> 409
+    payload = {"operation_id": op_id, "items": [{"product_id": pid, "quantity": 5}]}
+    res1 = client.post("/internal/reservations", json=payload, headers=INTERNAL_HEADERS)
+    assert res1.status_code == 409
+    assert "Insufficient stock" in res1.json()["detail"]
+
+    # Now restock inventory so 100 units exist
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE inventory SET quantity_on_hand = 100 WHERE product_id = :pid"), {"pid": pid})
+
+    # Replay identical request with same operation_id -> must still return 409!
+    res2 = client.post("/internal/reservations", json=payload, headers=INTERNAL_HEADERS)
+    assert res2.status_code == 409
+    assert "Insufficient stock" in res2.json()["detail"]
+
+    # Verify no stock was reserved despite restock
+    with engine.connect() as conn:
+        reserved = conn.execute(text("SELECT reserved_quantity FROM inventory WHERE product_id = :pid"), {"pid": pid}).scalar()
+        assert reserved == 0
+
+    # Query status endpoint -> 200 OK with status FAILED
+    status_res = client.get(f"/internal/reservations/{op_id}", headers=INTERNAL_HEADERS)
+    assert status_res.status_code == 200
+    assert status_res.json()["status"] == "FAILED"
+    assert "Insufficient stock" in status_res.json()["failure_reason"]
+
+# 19. Concurrent identical requests competing when available stock is 1
+def test_concurrent_identical_reservations_single_stock(test_tracker):
+    pids, op_ids = test_tracker
+    pid = create_test_product(pids, warehouses_stock={1: 1})
+    op_id = f"op_conc_single_{uuid.uuid4().hex[:8]}"
+    op_ids.append(op_id)
+
+    barrier = threading.Barrier(2)
+    results = []
+
+    def make_reservation_request():
+        thread_client = TestClient(app)
+        payload = {"operation_id": op_id, "items": [{"product_id": pid, "quantity": 1}]}
+        barrier.wait()
+        r = thread_client.post("/internal/reservations", json=payload, headers=INTERNAL_HEADERS)
+        results.append((r.status_code, r.json()))
+
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        futures = [ex.submit(make_reservation_request) for _ in range(2)]
+        for f in futures:
+            f.result()
+
+    status_codes = sorted([r[0] for r in results])
+    # Exactly one 201 (created) and one 200 (idempotent replay)
+    assert status_codes == [200, 201]
+
+    # Both must return the exact same reservation ID
+    res_ids = [r[1]["reservation_id"] for r in results]
+    assert res_ids[0] == res_ids[1]
+
+    # Database verification: reserved_quantity is exactly 1 (NOT 2)
+    with engine.connect() as conn:
+        inv = conn.execute(text("SELECT quantity_on_hand, reserved_quantity FROM inventory WHERE product_id = :pid"), {"pid": pid}).fetchone()
+        assert inv[0] == 1
+        assert inv[1] == 1
+
+        count = conn.execute(text("SELECT count(*) FROM stock_reservations WHERE operation_id = :op"), {"op": op_id}).scalar()
+        assert count == 1
+
+# 20. Concurrent identical requests competing when available stock is abundant
+def test_concurrent_identical_reservations_abundant_stock(test_tracker):
+    pids, op_ids = test_tracker
+    pid = create_test_product(pids, warehouses_stock={1: 10})
+    op_id = f"op_conc_abundant_{uuid.uuid4().hex[:8]}"
+    op_ids.append(op_id)
+
+    barrier = threading.Barrier(2)
+    results = []
+
+    def make_reservation_request():
+        thread_client = TestClient(app)
+        payload = {"operation_id": op_id, "items": [{"product_id": pid, "quantity": 4}]}
+        barrier.wait()
+        r = thread_client.post("/internal/reservations", json=payload, headers=INTERNAL_HEADERS)
+        results.append((r.status_code, r.json()))
+
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        futures = [ex.submit(make_reservation_request) for _ in range(2)]
+        for f in futures:
+            f.result()
+
+    status_codes = sorted([r[0] for r in results])
+    assert status_codes == [200, 201]
+    res_ids = [r[1]["reservation_id"] for r in results]
+    assert res_ids[0] == res_ids[1]
+
+    with engine.connect() as conn:
+        inv = conn.execute(text("SELECT quantity_on_hand, reserved_quantity FROM inventory WHERE product_id = :pid"), {"pid": pid}).fetchone()
+        assert inv[0] == 10
+        assert inv[1] == 4  # Exactly 4 units reserved, NOT 8!
+
+# 21. Concurrent conflicting payloads sharing the same operation ID
+def test_concurrent_conflicting_payloads_same_operation_id(test_tracker):
+    pids, op_ids = test_tracker
+    pid1 = create_test_product(pids, warehouses_stock={1: 10})
+    pid2 = create_test_product(pids, warehouses_stock={1: 10})
+    op_id = f"op_conc_conflict_{uuid.uuid4().hex[:8]}"
+    op_ids.append(op_id)
+
+    barrier = threading.Barrier(2)
+    results = []
+
+    def req_worker_1():
+        thread_client = TestClient(app)
+        payload = {"operation_id": op_id, "items": [{"product_id": pid1, "quantity": 2}]}
+        barrier.wait()
+        r = thread_client.post("/internal/reservations", json=payload, headers=INTERNAL_HEADERS)
+        results.append((r.status_code, r.json()))
+
+    def req_worker_2():
+        thread_client = TestClient(app)
+        payload = {"operation_id": op_id, "items": [{"product_id": pid2, "quantity": 3}]}
+        barrier.wait()
+        r = thread_client.post("/internal/reservations", json=payload, headers=INTERNAL_HEADERS)
+        results.append((r.status_code, r.json()))
+
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        f1 = ex.submit(req_worker_1)
+        f2 = ex.submit(req_worker_2)
+        f1.result()
+        f2.result()
+
+    status_codes = sorted([r[0] for r in results])
+    # Exactly one 201 (winner) and one 409 (conflicting payload)
+    assert status_codes == [201, 409]
+    conflict_res = [r[1] for r in results if r[0] == 409][0]
+    assert "conflicting payload" in conflict_res["detail"]
+
+# 22. Expiration boundary: Confirmation before expiration succeeds
+def test_confirm_before_expiration(test_tracker):
+    pids, op_ids = test_tracker
+    pid = create_test_product(pids, warehouses_stock={1: 10})
+    op_id = f"op_before_exp_{uuid.uuid4().hex[:8]}"
+    op_ids.append(op_id)
+
+    res = client.post("/internal/reservations", json={"operation_id": op_id, "items": [{"product_id": pid, "quantity": 3}]}, headers=INTERNAL_HEADERS)
+    assert res.status_code == 201
+
+    conf = client.post(f"/internal/reservations/{op_id}/confirm", headers=INTERNAL_HEADERS)
+    assert conf.status_code == 200
+    assert conf.json()["status"] == "CONFIRMED"
+
+# 23. Expiration boundary: Confirmation at or after expiration fails and releases stock
+def test_confirm_at_or_after_expiration(test_tracker):
+    pids, op_ids = test_tracker
+    pid = create_test_product(pids, warehouses_stock={1: 10})
+    op_id = f"op_after_exp_{uuid.uuid4().hex[:8]}"
+    op_ids.append(op_id)
+
+    res = client.post("/internal/reservations", json={"operation_id": op_id, "items": [{"product_id": pid, "quantity": 3}]}, headers=INTERNAL_HEADERS)
+    assert res.status_code == 201
+
+    # Backdate expires_at to 1 second in the past
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE stock_reservations SET expires_at = clock_timestamp() - INTERVAL '1 second' WHERE operation_id = :op"), {"op": op_id})
+
+    conf = client.post(f"/internal/reservations/{op_id}/confirm", headers=INTERNAL_HEADERS)
+    assert conf.status_code == 409
+    assert "expired" in conf.json()["detail"].lower()
+
+    with engine.connect() as conn:
+        status = conn.execute(text("SELECT status FROM stock_reservations WHERE operation_id = :op"), {"op": op_id}).scalar()
+        reserved = conn.execute(text("SELECT reserved_quantity FROM inventory WHERE product_id = :pid"), {"pid": pid}).scalar()
+        assert status == "EXPIRED"
+        assert reserved == 0
+
+# 24. Expiration boundary: Confirmation that begins before expiration but acquires its lock after expiration
+def test_confirm_lock_wait_after_expiration(test_tracker):
+    pids, op_ids = test_tracker
+    pid = create_test_product(pids, warehouses_stock={1: 10})
+    op_id = f"op_lock_exp_{uuid.uuid4().hex[:8]}"
+    op_ids.append(op_id)
+
+    # Create reservation with expires_at = clock_timestamp() + 2 seconds
+    res = client.post("/internal/reservations", json={"operation_id": op_id, "items": [{"product_id": pid, "quantity": 3}]}, headers=INTERNAL_HEADERS)
+    assert res.status_code == 201
+
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE stock_reservations SET expires_at = clock_timestamp() + INTERVAL '2 seconds' WHERE operation_id = :op"), {"op": op_id})
+
+    # Thread 1: Acquires row lock on reservation table in separate connection before expiration
+    lock_conn = engine.connect()
+    lock_trans = lock_conn.begin()
+    lock_conn.execute(text("SELECT * FROM stock_reservations WHERE operation_id = :op FOR UPDATE"), {"op": op_id})
+
+    results = []
+    def attempt_confirm():
+        thread_client = TestClient(app)
+        # Starts before expiration, but blocks waiting for lock_conn
+        r = thread_client.post(f"/internal/reservations/{op_id}/confirm", headers=INTERNAL_HEADERS)
+        results.append((r.status_code, r.json()))
+
+    with ThreadPoolExecutor(max_workers=1) as ex:
+        fut = ex.submit(attempt_confirm)
+        # Wait 2.5 seconds so expiration time elapses while lock is held
+        time.sleep(2.5)
+        # Release the lock by rolling back
+        lock_trans.rollback()
+        lock_conn.close()
+        fut.result()
+
+    # The confirm request acquired its lock AFTER expiration, so it MUST NOT confirm!
+    assert len(results) == 1
+    assert results[0][0] == 409
+    assert "expired" in results[0][1]["detail"].lower()
+
+    # Verify status is EXPIRED and inventory reserved_quantity is released
+    with engine.connect() as conn:
+        status = conn.execute(text("SELECT status FROM stock_reservations WHERE operation_id = :op"), {"op": op_id}).scalar()
+        reserved = conn.execute(text("SELECT reserved_quantity FROM inventory WHERE product_id = :pid"), {"pid": pid}).scalar()
+        assert status == "EXPIRED"
+        assert reserved == 0
