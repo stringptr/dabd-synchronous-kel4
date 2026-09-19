@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from auth_service.main import Base
 
 import os
-SQLALCHEMY_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "postgresql+psycopg2://postgres:postgres@localhost:5433/test_db")
+SQLALCHEMY_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "postgresql+psycopg2://postgres:testpassword@localhost:5434/test_db")
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -20,8 +20,10 @@ import os
 @pytest.fixture(autouse=True)
 def setup_database():
     url = make_url(str(engine.url))
-    if url.database != "test_db":
-        raise RuntimeError(f"Destructive tests target '{url.database}', expected 'test_db'")
+    if url.port == 5433 or url.database == "postgres":
+        raise RuntimeError("CRITICAL: Destructive test cannot target port 5433 or database 'postgres'! Designated isolated test port is 5434 ('test_db').")
+    if url.database != "test_db" or (url.port and url.port != 5434):
+        raise RuntimeError(f"Destructive tests target '{url}', expected port 5434 / database 'test_db'")
     if os.getenv("TEST_ENV") != "true":
         raise RuntimeError("Destructive tests require TEST_ENV=true")
 

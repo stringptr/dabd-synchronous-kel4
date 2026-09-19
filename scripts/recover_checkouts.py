@@ -16,9 +16,20 @@ logger = logging.getLogger("recover_checkouts")
 # Add parent directory to path so order_service can be imported
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-# Ensure INTERNAL_API_KEY is present
+# Check configured internal credentials
+parser = argparse.ArgumentParser(description="Durable Checkout Recovery Tool")
+parser.add_argument("--checkout-id", type=int, help="Specific checkout ID to recover", default=None)
+parser.add_argument("--db-url", type=str, help="Database connection URL", default=None)
+parser.add_argument("--internal-api-key", type=str, help="Internal API key for inter-service communication", default=None)
+
+# Pre-parse args to set INTERNAL_API_KEY before importing order_service
+temp_args, _ = parser.parse_known_args()
+if temp_args.internal_api_key:
+    os.environ["INTERNAL_API_KEY"] = temp_args.internal_api_key
+
 if not os.getenv("INTERNAL_API_KEY"):
-    os.environ["INTERNAL_API_KEY"] = "testinternal"
+    logger.error("INTERNAL_API_KEY must be configured via environment or --internal-api-key.")
+    sys.exit(1)
 
 try:
     from order_service.main import (
@@ -31,9 +42,6 @@ except ImportError as e:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Durable Checkout Recovery Tool")
-    parser.add_argument("--checkout-id", type=int, help="Specific checkout ID to recover", default=None)
-    parser.add_argument("--db-url", type=str, help="Database connection URL", default=None)
     args = parser.parse_args()
 
     active_engine = engine

@@ -19,8 +19,8 @@ from order_service.main import (
     get_or_create_cart, recover_single_checkout
 )
 
-# Test database configuration
-SQLALCHEMY_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "postgresql+psycopg2://postgres:postgres@localhost:5433/test_db")
+# Test database configuration - requires designated isolated PostgreSQL on port 5434
+SQLALCHEMY_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "postgresql+psycopg2://postgres:testpassword@localhost:5434/test_db")
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -52,8 +52,10 @@ def cleanup_user_data(user_id: int):
 @pytest.fixture(autouse=True)
 def setup_environment():
     url = make_url(str(engine.url))
-    if url.database != "test_db":
-        raise RuntimeError(f"Destructive tests target '{url.database}', expected 'test_db'")
+    if url.port == 5433 or url.database == "postgres":
+        raise RuntimeError("CRITICAL: Destructive test cannot target port 5433 or database 'postgres'! Designated isolated test port is 5434 ('test_db').")
+    if url.database != "test_db" or (url.port and url.port != 5434):
+        raise RuntimeError(f"Destructive tests target '{url}', expected port 5434 / database 'test_db'")
     if os.getenv("TEST_ENV") != "true":
         raise RuntimeError("Destructive tests require TEST_ENV=true")
 
@@ -557,3 +559,255 @@ def test_legacy_order_route_requires_idempotency_and_reserves(monkeypatch, dedic
     assert chk is not None
     assert chk.status == "RESERVED"
     assert chk.order_id == r_ok.json()["order_id"]
+
+
+# -----------------------------------------------------------------------------
+# 12. Recovery Race: Probe 404 While In-Flight, Then Committed
+# -----------------------------------------------------------------------------
+def test_recovery_race_404_while_in_flight_then_committed(monkeypatch, dedicated_user, test_db):
+    user_id = dedicated_user
+    db = test_db
+
+    # Checkout persisted in UNKNOWN state after an ambiguous timeout
+    res_op_id = f"res_race_{uuid.uuid4().hex[:6]}"
+    chk = Checkout(
+        user_id=user_id,
+        operation_id=f"race-op-{uuid.uuid4().hex[:6]}",
+        idempotency_key=f"race-key-{uuid.uuid4().hex[:6]}",
+        request_fingerprint="fp_race",
+        reservation_op_id=res_op_id,
+        status="UNKNOWN",
+        total_amount=Decimal("50.00"),
+        items_snapshot=[{"product_id": 1, "quantity": 1, "unit_price": "50.00", "subtotal": "50.00"}]
+    )
+    db.add(chk)
+    db.commit()
+
+    # Step 1 & 2: Original POST is still processing; recovery initially probes 404
+    def mock_get_404(op_id):
+        return ("NOT_FOUND", None, False, True)
+    monkeypatch.setattr(main, "get_reservation_internal", mock_get_404)
+
+    rec1 = recover_single_checkout(db, chk.checkout_id)
+    # Recovery must preserve UNKNOWN rather than prematurely failing
+    assert rec1.status == "UNKNOWN"
+    assert rec1.order_id is None
+    orders_count = db.query(Order).filter(Order.user_id == user_id).count()
+    assert orders_count == 0
+
+    # Step 3: Original POST finishes and commits ACTIVE reservation on Product Service
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+    def mock_get_active(op_id):
+        return ("ACTIVE", {"status": "ACTIVE", "expires_at": future_ts}, False, False)
+    monkeypatch.setattr(main, "get_reservation_internal", mock_get_active)
+
+    # Step 4: Subsequent recovery discovers the committed reservation and finalizes exactly one order
+    rec2 = recover_single_checkout(db, chk.checkout_id)
+    assert rec2.status == "RESERVED"
+    assert rec2.order_id is not None
+    created_order_id = rec2.order_id
+    assert db.query(Order).filter(Order.order_id == created_order_id).count() == 1
+
+    # Step 5: Idempotent repeat: subsequent pass does not duplicate orders
+    rec3 = recover_single_checkout(db, chk.checkout_id)
+    assert rec3.status == "RESERVED"
+    assert rec3.order_id == created_order_id
+    assert db.query(Order).filter(Order.user_id == user_id).count() == 1
+
+
+# -----------------------------------------------------------------------------
+# 13. Recovery During Product Service Complete Unavailability Preserves UNKNOWN
+# -----------------------------------------------------------------------------
+def test_recovery_service_unavailability_preserves_unknown(monkeypatch, dedicated_user, test_db):
+    user_id = dedicated_user
+    db = test_db
+
+    chk = Checkout(
+        user_id=user_id,
+        operation_id=f"unavail-op-{uuid.uuid4().hex[:6]}",
+        idempotency_key=f"unavail-key-{uuid.uuid4().hex[:6]}",
+        request_fingerprint="fp_unavail",
+        reservation_op_id=f"res_unavail_{uuid.uuid4().hex[:6]}",
+        status="UNKNOWN",
+        total_amount=Decimal("75.00"),
+        items_snapshot=[{"product_id": 1, "quantity": 1, "unit_price": "75.00", "subtotal": "75.00"}]
+    )
+    db.add(chk)
+    db.commit()
+
+    # Product Service is completely down (returns UNKNOWN outcome)
+    def mock_get_unavailable(op_id):
+        return ("UNKNOWN", None, False, True)
+    monkeypatch.setattr(main, "get_reservation_internal", mock_get_unavailable)
+
+    rec = recover_single_checkout(db, chk.checkout_id)
+    assert rec.status == "UNKNOWN"
+    assert rec.order_id is None
+    assert db.query(Order).filter(Order.user_id == user_id).count() == 0
+
+
+# -----------------------------------------------------------------------------
+# 14. Compensation Release Timeout Retains COMPENSATION_REQUIRED
+# -----------------------------------------------------------------------------
+def test_compensation_release_timeout_retains_compensation_required(monkeypatch, dedicated_user, test_db):
+    user_id = dedicated_user
+    db = test_db
+
+    chk = Checkout(
+        user_id=user_id,
+        operation_id=f"comp-to-op-{uuid.uuid4().hex[:6]}",
+        idempotency_key=f"comp-to-key-{uuid.uuid4().hex[:6]}",
+        request_fingerprint="fp_comp_to",
+        reservation_op_id=f"res_comp_to_{uuid.uuid4().hex[:6]}",
+        status="COMPENSATION_REQUIRED",
+        failure_code="ORDER_PERSISTENCE_FAILED",
+        failure_reason="DB timeout",
+        total_amount=Decimal("50.00"),
+        items_snapshot=[{"product_id": 1, "quantity": 1, "unit_price": "50.00", "subtotal": "50.00"}]
+    )
+    db.add(chk)
+    db.commit()
+
+    # Release call to Product Service times out / fails
+    def mock_release_timeout(op_id):
+        return False
+    monkeypatch.setattr(main, "release_reservation_internal", mock_release_timeout)
+
+    rec = recover_single_checkout(db, chk.checkout_id)
+    # Must NOT mark CANCELLED without verified terminal state!
+    assert rec.status == "COMPENSATION_REQUIRED"
+    assert rec.order_id is None
+
+
+# -----------------------------------------------------------------------------
+# 15. Repeated Compensation Recovers From COMPENSATION_REQUIRED to CANCELLED
+# -----------------------------------------------------------------------------
+def test_repeated_compensation_recovers_to_cancelled(monkeypatch, dedicated_user, test_db):
+    user_id = dedicated_user
+    db = test_db
+
+    chk = Checkout(
+        user_id=user_id,
+        operation_id=f"rep-comp-op-{uuid.uuid4().hex[:6]}",
+        idempotency_key=f"rep-comp-key-{uuid.uuid4().hex[:6]}",
+        request_fingerprint="fp_rep_comp",
+        reservation_op_id=f"res_rep_comp_{uuid.uuid4().hex[:6]}",
+        status="COMPENSATION_REQUIRED",
+        failure_code="ORDER_PERSISTENCE_FAILED",
+        failure_reason="DB error",
+        total_amount=Decimal("60.00"),
+        items_snapshot=[{"product_id": 1, "quantity": 1, "unit_price": "60.00", "subtotal": "60.00"}]
+    )
+    db.add(chk)
+    db.commit()
+
+    # Pass 1: Product Service is still down; compensation release fails
+    monkeypatch.setattr(main, "release_reservation_internal", lambda op_id: False)
+    rec1 = recover_single_checkout(db, chk.checkout_id)
+    assert rec1.status == "COMPENSATION_REQUIRED"
+
+    # Pass 2: Product Service recovers; verifiable release succeeds
+    released_ops = []
+    def mock_release_ok(op_id):
+        released_ops.append(op_id)
+        return True
+    monkeypatch.setattr(main, "release_reservation_internal", mock_release_ok)
+
+    rec2 = recover_single_checkout(db, chk.checkout_id)
+    assert rec2.status == "CANCELLED"
+    assert len(released_ops) == 1
+
+    # Pass 3: Re-recovery is idempotent
+    rec3 = recover_single_checkout(db, chk.checkout_id)
+    assert rec3.status == "CANCELLED"
+
+
+# -----------------------------------------------------------------------------
+# 16. Expiration Immediately Prior to Order Finalization Fails Closed
+# -----------------------------------------------------------------------------
+def test_expiration_immediately_prior_to_order_finalization(monkeypatch, dedicated_user, test_db):
+    user_id = dedicated_user
+    db = test_db
+
+    cart = Cart(user_id=user_id)
+    db.add(cart)
+    db.flush()
+    db.add(CartItemModel(cart_id=cart.cart_id, product_id=1, quantity=1))
+    db.commit()
+
+    monkeypatch.setattr(main, "fetch_product", lambda pid, rid, auth: {"price": "25.00", "name": "Item 1"})
+
+    # Product Service returns ACTIVE reservation, but with expires_at already elapsed
+    past_ts = (datetime.now(timezone.utc) - timedelta(seconds=2)).isoformat()
+    def mock_reserve_expired(op_id, items):
+        return ("ACTIVE", {"status": "ACTIVE", "expires_at": past_ts}, None, None, False)
+    monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve_expired)
+
+    released_ops = []
+    monkeypatch.setattr(main, "release_reservation_internal", lambda op_id: released_ops.append(op_id) or True)
+
+    ik = f"exp-immed-{uuid.uuid4().hex[:6]}"
+    resp = client.post("/checkout", json={}, headers=make_headers(user_id=user_id, idempotency_key=ik))
+    assert resp.status_code == 400
+    data = resp.json()
+    assert data["detail"]["failure_code"] == "RESERVATION_EXPIRED"
+
+    # Order must NOT be created
+    assert db.query(Order).filter(Order.user_id == user_id).count() == 0
+    # Hold must be released
+    assert len(released_ops) == 1
+
+    chk = db.query(Checkout).filter(Checkout.user_id == user_id, Checkout.idempotency_key == ik).first()
+    assert chk.status == "FAILED"
+    assert chk.failure_code == "RESERVATION_EXPIRED"
+
+
+# -----------------------------------------------------------------------------
+# 17. Concurrent Recovery Workers Finalize Exactly Once
+# -----------------------------------------------------------------------------
+def test_concurrent_recovery_workers_finalize_exactly_once(monkeypatch, dedicated_user, test_db):
+    user_id = dedicated_user
+    db = test_db
+
+    res_op_id = f"res_concrec_{uuid.uuid4().hex[:6]}"
+    chk = Checkout(
+        user_id=user_id,
+        operation_id=f"concrec-op-{uuid.uuid4().hex[:6]}",
+        idempotency_key=f"concrec-key-{uuid.uuid4().hex[:6]}",
+        request_fingerprint="fp_concrec",
+        reservation_op_id=res_op_id,
+        status="UNKNOWN",
+        total_amount=Decimal("120.00"),
+        items_snapshot=[{"product_id": 1, "quantity": 2, "unit_price": "60.00", "subtotal": "120.00"}]
+    )
+    db.add(chk)
+    db.commit()
+
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+    monkeypatch.setattr(
+        main, "get_reservation_internal",
+        lambda op_id: ("ACTIVE", {"status": "ACTIVE", "expires_at": future_ts}, False, False)
+    )
+
+    # Concurrently launch 5 recovery workers on this checkout
+    def worker_run():
+        s = TestingSessionLocal()
+        try:
+            chk_rec = recover_single_checkout(s, chk.checkout_id)
+            return chk_rec.status, chk_rec.order_id
+        finally:
+            s.close()
+
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        futures = [pool.submit(worker_run) for _ in range(5)]
+        results = [f.result() for f in futures]
+
+    for status, order_id in results:
+        assert status == "RESERVED"
+        assert order_id is not None
+
+    # Exactly one order was created in the database across all 5 concurrent recovery workers
+    orders = db.query(Order).filter(Order.user_id == user_id).all()
+    assert len(orders) == 1
+    assert orders[0].order_id == results[0][1]
+

@@ -56,13 +56,6 @@ def upgrade() -> None:
     op.create_index('ix_checkouts_reservation_op_id', 'checkouts', ['reservation_op_id'], unique=False)
     op.create_index('ix_checkouts_status', 'checkouts', ['status'], unique=False)
 
-    # Synchronize serial sequences with existing maximum IDs to ensure safe auto-increment
-    op.execute("SELECT setval('orders_order_id_seq', (SELECT COALESCE(MAX(order_id), 1) FROM orders))")
-    op.execute("SELECT setval('order_items_order_item_id_seq', (SELECT COALESCE(MAX(order_item_id), 1) FROM order_items))")
-    op.execute("SELECT setval('carts_cart_id_seq', (SELECT COALESCE(MAX(cart_id), 1) FROM carts))")
-    op.execute("SELECT setval('cart_items_cart_item_id_seq', (SELECT COALESCE(MAX(cart_item_id), 1) FROM cart_items))")
-    op.execute("SELECT setval('products_product_id_seq', (SELECT COALESCE(MAX(product_id), 1) FROM products))")
-
 
 def downgrade() -> None:
     """Safe downgrade of f4a81c0d2e9b.

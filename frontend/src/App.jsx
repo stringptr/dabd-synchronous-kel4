@@ -22,6 +22,7 @@ function App() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkoutKey, setCheckoutKey] = useState('');
+  const [buyKeys, setBuyKeys] = useState({});
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   useEffect(() => {
@@ -259,6 +260,12 @@ function App() {
     setView('login');
   };
 
+  const handleResetCheckoutKey = () => {
+    if (window.confirm("Warning: Resetting your checkout key may abandon an in-flight checkout. If your order was processed, resetting may result in a duplicate order on your next attempt. Are you sure you want to reset?")) {
+      setCheckoutKey('');
+    }
+  };
+
   const handleCheckout = () => {
     setError('');
     setIsCheckingOut(true);
@@ -303,7 +310,9 @@ function App() {
   const buyProduct = (product_id) => {
     if (!window.confirm("Are you sure you want to order this product?")) return;
     
-    const key = (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'ord-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9));
+    // Retain existing key for this product on retry, or generate a fresh key if starting anew
+    const key = buyKeys[product_id] || (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'ord-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9));
+    setBuyKeys(prev => ({ ...prev, [product_id]: key }));
     
     fetch('/api/orders', {
       method: 'POST',
@@ -317,17 +326,36 @@ function App() {
     .then(async res => {
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.detail || "Failed to place order");
+        const detailMsg = typeof errorData.detail === 'object'
+          ? (errorData.detail.failure_reason || errorData.detail.message || JSON.stringify(errorData.detail))
+          : (errorData.detail || "Failed to place order");
+        throw new Error(detailMsg);
       }
+      // On success, clear the idempotency key for this product
+      setBuyKeys(prev => {
+        const next = { ...prev };
+        delete next[product_id];
+        return next;
+      });
       loadProducts(); // refresh stock
       loadOrders();   // refresh orders
       setSuccess("Order placed successfully!");
       setTimeout(() => setSuccess(''), 3000);
     })
     .catch(err => {
-      setError("Order error: " + err.message);
-      setTimeout(() => setError(''), 5000);
+      setError("Order error: " + err.message + " (You can retry with the same key)");
+      setTimeout(() => setError(''), 6000);
     });
+  };
+
+  const resetBuyKey = (product_id) => {
+    if (window.confirm("Warning: Resetting your order key may abandon an in-flight order. If your order was processed, resetting may result in a duplicate order. Are you sure you want to reset?")) {
+      setBuyKeys(prev => {
+        const next = { ...prev };
+        delete next[product_id];
+        return next;
+      });
+    }
   };
 
   // Admin Features
@@ -475,22 +503,35 @@ function App() {
                     <span style={{color: 'red'}}>Out of Stock</span>
                   )}
                 </div>
-                <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
-                  <button 
-                    onClick={() => addToCart(p.product_id)} 
-                    disabled={p.total_stock <= 0}
-                    style={{ flex: 1 }}
-                  >
-                    {p.total_stock > 0 ? "+ Cart" : "Out of Stock"}
-                  </button>
-                  <button 
-                    onClick={() => buyProduct(p.product_id)} 
-                    disabled={p.total_stock <= 0}
-                    className="btn-secondary"
-                    style={{ flex: 1 }}
-                  >
-                    Buy Now
-                  </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: 'auto' }}>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button 
+                      onClick={() => addToCart(p.product_id)} 
+                      disabled={p.total_stock <= 0}
+                      style={{ flex: 1 }}
+                    >
+                      {p.total_stock > 0 ? "+ Cart" : "Out of Stock"}
+                    </button>
+                    <button 
+                      onClick={() => buyProduct(p.product_id)} 
+                      disabled={p.total_stock <= 0}
+                      className="btn-secondary"
+                      style={{ flex: 1 }}
+                    >
+                      {buyKeys[p.product_id] ? "Retry Buy Now" : "Buy Now"}
+                    </button>
+                  </div>
+                  {buyKeys[p.product_id] && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={() => resetBuyKey(p.product_id)}
+                        className="btn-link"
+                        style={{ color: '#666', fontSize: '12px', padding: 0 }}
+                      >
+                        Reset Key
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -561,11 +602,21 @@ function App() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '15px', gap: '10px' }}>
               {checkoutKey && (
                 <button 
-                  onClick={() => setCheckoutKey('')} 
+                  onClick={handleResetCheckoutKey} 
                   className="btn-link"
                   style={{ color: '#666', fontSize: '13px' }}
                 >
                   Reset Key
+                </button>
+              )}
+              {checkoutKey && (
+                <button
+                  onClick={handleCheckout}
+                  disabled={isCheckingOut}
+                  className="btn-secondary"
+                  style={{ padding: '10px 16px', fontSize: '14px' }}
+                >
+                  Check Status / Recover
                 </button>
               )}
               <button 

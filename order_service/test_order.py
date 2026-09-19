@@ -3,13 +3,19 @@ os.environ["INTERNAL_API_KEY"] = "testinternal"
 
 import pytest
 from fastapi.testclient import TestClient
-from order_service.main import app, get_db, Base, fetch_product_with_breaker, breaker
+from order_service.main import (
+    app, get_db, Base, fetch_product_with_breaker, breaker,
+    Checkout, Order, OrderItem, SessionLocal
+)
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
+import uuid
 import pybreaker
 
 import os
-SQLALCHEMY_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "postgresql+psycopg2://postgres:postgres@localhost:5433/test_db")
+SQLALCHEMY_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "postgresql+psycopg2://postgres:testpassword@localhost:5434/test_db")
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -21,25 +27,29 @@ import os
 @pytest.fixture(autouse=True)
 def setup_database():
     url = make_url(str(engine.url))
-    if url.database != "test_db":
-        raise RuntimeError(f"Destructive tests target '{url.database}', expected 'test_db'")
+    if url.port == 5433 or url.database == "postgres":
+        raise RuntimeError("CRITICAL: Destructive test cannot target port 5433 or database 'postgres'! Designated isolated test port is 5434 ('test_db').")
+    if url.database != "test_db" or (url.port and url.port != 5434):
+        raise RuntimeError(f"Destructive tests target '{url}', expected port 5434 / database 'test_db'")
     if os.getenv("TEST_ENV") != "true":
         raise RuntimeError("Destructive tests require TEST_ENV=true")
 
-    connection = engine.connect()
-    transaction = connection.begin()
-    session = TestingSessionLocal(bind=connection)
-    
     def override_get_db():
-        yield session
+        db = TestingSessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
 
     app.dependency_overrides[get_db] = override_get_db
     
     yield
-    
-    session.close()
-    transaction.rollback()
-    connection.close()
+
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM checkouts"))
+        conn.execute(text("DELETE FROM order_items WHERE order_id NOT IN (SELECT order_id FROM payments)"))
+        conn.execute(text("DELETE FROM orders WHERE order_id NOT IN (SELECT order_id FROM payments)"))
+
     app.dependency_overrides.clear()
 
 client = TestClient(app)
@@ -166,3 +176,93 @@ def test_order_isolation_between_users(monkeypatch):
     res1 = client.get("/orders", headers={"X-User-Sub": "1", "X-User-Role": "user"})
     assert res1.status_code == 200
     assert any(o["order_id"] == created_order_id for o in res1.json())
+
+
+def test_create_order_ambiguous_recovery(monkeypatch):
+    monkeypatch.setattr(main, "fetch_product", lambda pid, rid, auth: {"price": 50.0, "name": "Product 1"})
+    main.breaker.close()
+
+    # Initial reservation call times out
+    def mock_reserve_timeout(op_id, items):
+        return ("UNKNOWN", None, "READ_TIMEOUT", "Socket read timeout", True)
+    monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve_timeout)
+
+    # Initial lookup returns NOT_FOUND (original POST still in-flight)
+    def mock_get_res_404(op_id):
+        return ("NOT_FOUND", None, False, True)
+    monkeypatch.setattr(main, "get_reservation_internal", mock_get_res_404)
+
+    ik = f"ord-ambig-{uuid.uuid4().hex[:6]}"
+    res1 = client.post("/orders", json={"items": [{"product_id": 1, "quantity": 1}]}, headers={"X-User-Sub": "1", "X-User-Role": "user", "Idempotency-Key": ik})
+    # Ambiguous outcome returns 504
+    assert res1.status_code == 504
+
+    # Subsequent probe reveals reservation committed ACTIVE
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+    def mock_get_res_active(op_id):
+        return ("ACTIVE", {"status": "ACTIVE", "expires_at": future_ts}, False, False)
+    monkeypatch.setattr(main, "get_reservation_internal", mock_get_res_active)
+
+    # Replay with same Idempotency-Key
+    res2 = client.post("/orders", json={"items": [{"product_id": 1, "quantity": 1}]}, headers={"X-User-Sub": "1", "X-User-Role": "user", "Idempotency-Key": ik})
+    assert res2.status_code == 200
+    data = res2.json()
+    assert data["order_id"] is not None
+    assert data["total_amount"] == 50.0
+
+
+def test_create_order_compensation_on_persistence_failure(monkeypatch):
+    monkeypatch.setattr(main, "fetch_product", lambda pid, rid, auth: {"price": 75.0, "name": "Product 1"})
+    main.breaker.close()
+
+    def mock_reserve(op_id, items):
+        return ("ACTIVE", {"status": "ACTIVE"}, None, None, False)
+    monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
+
+    released_ops = []
+    def mock_release(op_id):
+        released_ops.append(op_id)
+        return True
+    monkeypatch.setattr(main, "release_reservation_internal", mock_release)
+
+    # Simulate database crash during Order creation
+    original_add = Session.add
+    def failing_add(self, instance, _warn=True):
+        if isinstance(instance, Order):
+            raise RuntimeError("DB disk full during Order insertion")
+        return original_add(self, instance, _warn=_warn)
+    monkeypatch.setattr(Session, "add", failing_add)
+
+    ik = f"ord-fail-{uuid.uuid4().hex[:6]}"
+    res = client.post("/orders", json={"items": [{"product_id": 1, "quantity": 1}]}, headers={"X-User-Sub": "1", "X-User-Role": "user", "Idempotency-Key": ik})
+    assert res.status_code == 500
+
+    # Compensating release must have been executed
+    assert len(released_ops) == 1
+
+
+def test_create_order_concurrent_idempotent_requests(monkeypatch):
+    monkeypatch.setattr(main, "fetch_product", lambda pid, rid, auth: {"price": 30.0, "name": "Product 1"})
+    main.breaker.close()
+
+    def mock_reserve(op_id, items):
+        return ("ACTIVE", {"status": "ACTIVE"}, None, None, False)
+    monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
+
+    ik = f"ord-conc-{uuid.uuid4().hex[:6]}"
+    payload = {"items": [{"product_id": 1, "quantity": 1}]}
+    headers = {"X-User-Sub": "1", "X-User-Role": "user", "Idempotency-Key": ik}
+
+    def make_request():
+        return client.post("/orders", json=payload, headers=headers)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        f1 = pool.submit(make_request)
+        f2 = pool.submit(make_request)
+        r1 = f1.result()
+        r2 = f2.result()
+
+    assert r1.status_code == 200
+    assert r2.status_code == 200
+    assert r1.json()["order_id"] == r2.json()["order_id"]
+
