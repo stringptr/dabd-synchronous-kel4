@@ -3036,6 +3036,8 @@ def get_order_payment_status(
         payment_attempts=attempts_summary
     )
 
+_step2_post_inspect_hook = None
+
 def reconcile_all_pending_operations(db: Session, worker_id: str = "worker-1") -> dict:
     """
     Autonomous recovery engine:
@@ -3087,6 +3089,7 @@ def reconcile_all_pending_operations(db: Session, worker_id: str = "worker-1") -
             Order.status == "Pending",
             (Checkout.lease_worker_id.is_(None) | (Checkout.lease_expires_at < now)),
             (Checkout.next_reconcile_at.is_(None) | (Checkout.next_reconcile_at <= now)),
+            (Checkout.failure_code.is_(None) | (Checkout.failure_code != "CONFIRMED_WITHOUT_ELIGIBLE_PAYMENT")),
             or_(
                 Checkout.status == "COMPENSATION_REQUIRED",
                 Checkout.reservation_expires_at <= now
@@ -3125,9 +3128,35 @@ def reconcile_all_pending_operations(db: Session, worker_id: str = "worker-1") -
                     db.commit()
                     continue
 
+            if _step2_post_inspect_hook:
+                _step2_post_inspect_hook()
+
             order = db.query(Order).filter(Order.order_id == ord_id).with_for_update().first()
             chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).with_for_update().first()
             if not order or order.status != "Pending" or not chk:
+                db.commit()
+                continue
+
+            # Requirement 2: If checkout.failure_code is CONFIRMED_WITHOUT_ELIGIBLE_PAYMENT:
+            # Do not issue further release requests; preserve Pending order and discrepancy for manual review.
+            if chk.failure_code == "CONFIRMED_WITHOUT_ELIGIBLE_PAYMENT":
+                chk.lease_worker_id = None
+                chk.lease_expires_at = None
+                db.commit()
+                continue
+
+            # Requirement 1: After acquiring Order and Checkout locks, recheck
+            # for unresolved payment attempts BEFORE transitioning checkout to COMPENSATION_REQUIRED.
+            # If a payment is now in flight, commit without releasing inventory and defer to payment reconciliation.
+            unresolved_pa_under_lock = db.query(PaymentAttempt).filter(
+                PaymentAttempt.order_id == ord_id,
+                PaymentAttempt.status.in_(IN_FLIGHT_PAYMENT_STATUSES)
+            ).first()
+            if unresolved_pa_under_lock:
+                chk.lease_worker_id = None
+                chk.lease_expires_at = None
+                chk.reconcile_attempts += 1
+                chk.next_reconcile_at = datetime.now(timezone.utc) + timedelta(seconds=min(300, 2 ** chk.reconcile_attempts))
                 db.commit()
                 continue
 
@@ -3181,9 +3210,10 @@ def reconcile_all_pending_operations(db: Session, worker_id: str = "worker-1") -
                         canc.reason = "Cannot cancel order: inventory reservation is already confirmed and paid"
                         canc.updated_at = now_fin
                 else:
+                    # Discrepancy is preserved: CONFIRMED_WITHOUT_ELIGIBLE_PAYMENT
+                    # Do not issue further release requests; leave available for manual review
                     if chk:
-                        chk.reconcile_attempts += 1
-                        chk.next_reconcile_at = now_fin + timedelta(seconds=min(300, 2 ** chk.reconcile_attempts))
+                        chk.next_reconcile_at = None
                     if canc and canc.status in ("PROCESSING", "UNKNOWN"):
                         canc.status = "FAILED"
                         canc.reason = "Cannot cancel order: inventory reservation is confirmed but no eligible payment attempt exists; flagged for review"

@@ -9,6 +9,7 @@ import json
 import pytest
 from decimal import Decimal
 from datetime import datetime, timedelta, timezone
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
@@ -1206,6 +1207,202 @@ def test_normal_successful_payment_unchanged(monkeypatch, test_client, dedicated
         assert p.status == "Completed"
         assert p.method == "Gift Card"
         assert p.amount == Decimal("100.00")
+    finally:
+        db.close()
+
+
+# -----------------------------------------------------------------------------
+# Test 25: Deterministic Concurrency: Payment initiation between initial inspection
+# and final lock acquisition prevents inventory-release request
+# -----------------------------------------------------------------------------
+def test_expiration_worker_payment_interleaving_blocks_release(monkeypatch, dedicated_user):
+    order_id, chk_id, res_op, chk_idemp = create_pending_order_with_checkout(
+        dedicated_user,
+        expires_in_seconds=-300
+    )
+
+    release_calls = []
+    monkeypatch.setattr(main, "release_reservation_internal", lambda op: release_calls.append(op) or False)
+
+    # Synchronization barriers
+    barrier_inspected = threading.Event()
+    barrier_payment_inserted = threading.Event()
+
+    def hook_after_initial_inspect():
+        # Signal payment thread that initial check found no payment attempt
+        barrier_inspected.set()
+        # Wait for payment thread to insert and commit in-flight payment attempt
+        assert barrier_payment_inserted.wait(timeout=5.0), "Timed out waiting for concurrent payment insertion"
+
+    monkeypatch.setattr(main, "_step2_post_inspect_hook", hook_after_initial_inspect)
+
+    def worker_thread_fn():
+        db_worker = TestingSessionLocal()
+        try:
+            return reconcile_all_pending_operations(db_worker, worker_id="test-concurrency-worker")
+        finally:
+            db_worker.close()
+
+    def payment_thread_fn():
+        assert barrier_inspected.wait(timeout=5.0), "Timed out waiting for worker initial inspection"
+        db_payment = TestingSessionLocal()
+        try:
+            # Separate session inserts in-flight payment attempt
+            attempt = PaymentAttempt(
+                order_id=order_id,
+                user_id=dedicated_user,
+                operation_id=f"pay_race_{uuid.uuid4().hex}",
+                idempotency_key=f"idemp_race_{uuid.uuid4().hex}",
+                request_fingerprint="fp_race",
+                amount=Decimal("100.00"),
+                method="Credit Card",
+                simulated_outcome="SUCCESS",
+                status="PROCESSING",
+                stage="INITIATED"
+            )
+            db_payment.add(attempt)
+            db_payment.commit()
+        finally:
+            db_payment.close()
+            barrier_payment_inserted.set()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        f_worker = pool.submit(worker_thread_fn)
+        f_payment = pool.submit(payment_thread_fn)
+        f_payment.result()
+        f_worker.result()
+
+    # Verify that:
+    # 1. NO inventory release was requested!
+    assert len(release_calls) == 0, f"Expected 0 release calls, got: {release_calls}"
+
+    # 2. State preserved: order remains Pending, checkout remains RESERVED (not COMPENSATION_REQUIRED), lease cleared
+    db = TestingSessionLocal()
+    try:
+        order = db.query(Order).filter(Order.order_id == order_id).first()
+        chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).first()
+        pa = db.query(PaymentAttempt).filter(PaymentAttempt.order_id == order_id).first()
+
+        assert order.status == "Pending"
+        assert chk.status == "RESERVED"  # NOT transitioned to COMPENSATION_REQUIRED!
+        assert chk.lease_worker_id is None
+        assert pa is not None
+        assert pa.status == "PROCESSING"
+    finally:
+        db.close()
+
+
+# -----------------------------------------------------------------------------
+# Test 26: Discrepancy State: Produces no repeated release requests across sweeps
+# -----------------------------------------------------------------------------
+def test_discrepancy_state_produces_no_repeated_release_requests(monkeypatch, dedicated_user):
+    order_id, chk_id, res_op, chk_idemp = create_pending_order_with_checkout(
+        dedicated_user,
+        expires_in_seconds=-300
+    )
+
+    # Insert a definitively DECLINED payment attempt
+    db = TestingSessionLocal()
+    try:
+        declined_att = PaymentAttempt(
+            order_id=order_id,
+            user_id=dedicated_user,
+            operation_id=f"pay_dec_{uuid.uuid4().hex}",
+            idempotency_key=f"idemp_dec_{uuid.uuid4().hex}",
+            request_fingerprint="fp_dec",
+            amount=Decimal("100.00"),
+            method="Credit Card",
+            simulated_outcome="DECLINE",
+            status="FAILED",
+            stage="SIMULATED_DECLINE",
+            failure_code="PAYMENT_DECLINED",
+            failure_reason="Simulated payment declined by card issuer"
+        )
+        db.add(declined_att)
+        db.commit()
+    finally:
+        db.close()
+
+    release_calls = []
+    monkeypatch.setattr(main, "release_reservation_internal", lambda op: release_calls.append(op) or False)
+    monkeypatch.setattr(main, "get_reservation_internal", lambda op: ("CONFIRMED", {"status": "CONFIRMED"}, False, False))
+
+    # Run 1: Establishes discrepancy state (CONFIRMED_WITHOUT_ELIGIBLE_PAYMENT)
+    db = TestingSessionLocal()
+    try:
+        stats1 = reconcile_all_pending_operations(db, worker_id="test-audit-worker-1")
+        assert stats1["expired_checkouts_reconciled"] == 1
+        assert len(release_calls) == 1, "Initial sweep must attempt release once"
+
+        order = db.query(Order).filter(Order.order_id == order_id).first()
+        chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).first()
+        p = db.query(Payment).filter(Payment.order_id == order_id).first()
+
+        assert order.status == "Pending"
+        assert chk.status == "COMPENSATION_REQUIRED"
+        assert chk.failure_code == "CONFIRMED_WITHOUT_ELIGIBLE_PAYMENT"
+        assert p is None
+    finally:
+        db.close()
+
+    # Now run repeated background sweeps (Run 2, Run 3, Run 4)
+    for sweep_num in range(2, 5):
+        db = TestingSessionLocal()
+        try:
+            stats = reconcile_all_pending_operations(db, worker_id=f"test-audit-worker-{sweep_num}")
+            assert stats["expired_checkouts_reconciled"] == 0, f"Discrepancy checkout must not be swept again on run {sweep_num}"
+            # Verify 0 repeated release calls
+            assert len(release_calls) == 1, f"Expected no repeated release calls on run {sweep_num}, total calls: {len(release_calls)}"
+
+            order = db.query(Order).filter(Order.order_id == order_id).first()
+            chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).first()
+            p = db.query(Payment).filter(Payment.order_id == order_id).first()
+
+            # State remains preserved for manual review: NOT Paid, NOT Cancelled, Pending
+            assert order.status == "Pending"
+            assert chk.status == "COMPENSATION_REQUIRED"
+            assert chk.failure_code == "CONFIRMED_WITHOUT_ELIGIBLE_PAYMENT"
+            assert p is None
+        finally:
+            db.close()
+
+
+# -----------------------------------------------------------------------------
+# Test 27: Discrepancy State with past next_reconcile_at produces NO release requests
+# -----------------------------------------------------------------------------
+def test_preexisting_discrepancy_state_produces_no_release_requests(monkeypatch, dedicated_user):
+    order_id, chk_id, res_op, chk_idemp = create_pending_order_with_checkout(
+        dedicated_user,
+        expires_in_seconds=-300
+    )
+
+    db = TestingSessionLocal()
+    try:
+        chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).first()
+        chk.status = "COMPENSATION_REQUIRED"
+        chk.failure_code = "CONFIRMED_WITHOUT_ELIGIBLE_PAYMENT"
+        chk.failure_reason = "Confirmed hold without payment"
+        chk.next_reconcile_at = datetime.now(timezone.utc) - timedelta(seconds=60)
+        db.commit()
+    finally:
+        db.close()
+
+    release_calls = []
+    monkeypatch.setattr(main, "release_reservation_internal", lambda op: release_calls.append(op) or False)
+
+    db = TestingSessionLocal()
+    try:
+        stats = reconcile_all_pending_operations(db, worker_id="test-audit-worker-manual")
+        assert len(release_calls) == 0, f"Expected 0 release calls, got {len(release_calls)}"
+
+        order = db.query(Order).filter(Order.order_id == order_id).first()
+        chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).first()
+        p = db.query(Payment).filter(Payment.order_id == order_id).first()
+
+        assert order.status == "Pending"
+        assert chk.status == "COMPENSATION_REQUIRED"
+        assert chk.failure_code == "CONFIRMED_WITHOUT_ELIGIBLE_PAYMENT"
+        assert p is None
     finally:
         db.close()
 
