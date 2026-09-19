@@ -7,9 +7,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_TEST_DB: ${POSTGRES_TEST_DB:-test_db}
     env_file: .env
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init/ddl.sql:/docker-entrypoint-initdb.d/1-ddl.sql:ro
@@ -31,6 +32,7 @@ services:
       - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - DB_NAME=${POSTGRES_DB:-postgres}
       - JWT_SECRET=${JWT_SECRET:-supersecret}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-internal_secret}
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,6 +53,7 @@ services:
       - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - DB_NAME=${POSTGRES_DB:-postgres}
       - INSTANCE_NAME=product-service-1
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-internal_secret}
     depends_on:
       postgres:
         condition: service_healthy
@@ -71,6 +74,7 @@ services:
       - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - DB_NAME=${POSTGRES_DB:-postgres}
       - INSTANCE_NAME=product-service-2
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-internal_secret}
     depends_on:
       postgres:
         condition: service_healthy
@@ -91,6 +95,7 @@ services:
       - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - DB_NAME=${POSTGRES_DB:-postgres}
       - PRODUCT_SERVICE_URL=http://nginx/api/products
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-internal_secret}
     depends_on:
       postgres:
         condition: service_healthy

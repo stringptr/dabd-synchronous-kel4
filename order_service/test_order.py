@@ -1,31 +1,52 @@
+import os
+os.environ["INTERNAL_API_KEY"] = "testinternal"
+
 import pytest
 from fastapi.testclient import TestClient
-from main import app, get_db, Base, fetch_product_with_breaker, breaker
+from order_service.main import app, get_db, Base, fetch_product_with_breaker, breaker
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import pybreaker
 
-from sqlalchemy.pool import StaticPool
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=StaticPool)
+import os
+SQLALCHEMY_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "postgresql+psycopg2://postgres:postgres@localhost:5433/test_db")
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base.metadata.create_all(bind=engine)
+from sqlalchemy import text
 
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
+from sqlalchemy.engine import make_url
+import os
 
-app.dependency_overrides[get_db] = override_get_db
+@pytest.fixture(autouse=True)
+def setup_database():
+    url = make_url(str(engine.url))
+    if url.database != "test_db":
+        raise RuntimeError(f"Destructive tests target '{url.database}', expected 'test_db'")
+    if os.getenv("TEST_ENV") != "true":
+        raise RuntimeError("Destructive tests require TEST_ENV=true")
+
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = TestingSessionLocal(bind=connection)
+    
+    def override_get_db():
+        yield session
+
+    app.dependency_overrides[get_db] = override_get_db
+    
+    yield
+    
+    session.close()
+    transaction.rollback()
+    connection.close()
+    app.dependency_overrides.clear()
 
 client = TestClient(app)
 
 # We need to monkeypatch the fetch_product_with_breaker to not hit network, 
 # but we want to test circuit breaker. So we patch the inner function fetch_product.
-import main
+import order_service.main as main
 
 def test_circuit_breaker(monkeypatch):
     fail_count = 0
@@ -84,8 +105,41 @@ def test_create_order_insufficient_stock(monkeypatch):
     assert response.status_code == 400
 
 def test_get_orders(monkeypatch):
+    def mock_fetch(product_id, req_id, auth):
+        return {"price": 100.0, "total_stock": 5}
+    monkeypatch.setattr(main, "fetch_product", mock_fetch)
+    main.breaker.close()
+    client.post("/orders", json={
+        "items": [{"product_id": 1, "quantity": 1}]
+    }, headers={"X-User-Sub": "1", "X-User-Role": "user"})
+
     response = client.get("/orders", headers={"X-User-Sub": "1", "X-User-Role": "user"})
     assert response.status_code == 200
-    data = response.json()
-    assert isinstance(data, list)
-    assert data[0]["user_id"] == 1
+    assert len(response.json()) > 0
+
+def test_get_orders_unauthenticated():
+    response = client.get("/orders")
+    assert response.status_code == 401
+
+def test_order_isolation_between_users(monkeypatch):
+    def mock_fetch(product_id, req_id, auth):
+        return {"price": 50.0, "total_stock": 10}
+    monkeypatch.setattr(main, "fetch_product", mock_fetch)
+    main.breaker.close()
+    
+    # User 1 creates an order
+    res = client.post("/orders", json={
+        "items": [{"product_id": 1, "quantity": 1}]
+    }, headers={"X-User-Sub": "1", "X-User-Role": "user"})
+    assert res.status_code == 200
+    created_order_id = res.json()["order_id"]
+
+    # User 2 checks orders - must NOT see User 1's newly created order
+    res2 = client.get("/orders", headers={"X-User-Sub": "2", "X-User-Role": "user"})
+    assert res2.status_code == 200
+    assert not any(o["order_id"] == created_order_id for o in res2.json())
+
+    # User 1 checks orders - must see User 1's newly created order
+    res1 = client.get("/orders", headers={"X-User-Sub": "1", "X-User-Role": "user"})
+    assert res1.status_code == 200
+    assert any(o["order_id"] == created_order_id for o in res1.json())

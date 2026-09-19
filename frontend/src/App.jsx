@@ -6,6 +6,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [cart, setCart] = useState({ items: [], total_items: 0, estimated_total: 0.0 });
   
   // View states: 'login', 'register', 'dashboard'
   const [view, setView] = useState(token ? 'dashboard' : 'login');
@@ -63,10 +64,129 @@ function App() {
     .catch(err => console.error("Error loading orders:", err));
   };
 
+  const loadCart = () => {
+    if (!token) return;
+    fetch('/api/cart', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => {
+      if (!res.ok) throw new Error("Failed to load cart");
+      return res.json();
+    })
+    .then(data => setCart(data))
+    .catch(err => console.error("Error loading cart:", err));
+  };
+
+  const addToCart = (product_id) => {
+    setError('');
+    fetch('/api/cart/items', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ product_id, quantity: 1 })
+    })
+    .then(async res => {
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Failed to add item to cart");
+      }
+      return res.json();
+    })
+    .then(updatedCart => {
+      setCart(updatedCart);
+      setSuccess("Item added to cart!");
+      setTimeout(() => setSuccess(''), 3000);
+    })
+    .catch(err => {
+      setError(err.message);
+      setTimeout(() => setError(''), 5000);
+    });
+  };
+
+  const updateCartQuantity = (cart_item_id, quantity) => {
+    if (quantity <= 0) {
+      removeCartItem(cart_item_id);
+      return;
+    }
+    setError('');
+    fetch(`/api/cart/items/${cart_item_id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ quantity })
+    })
+    .then(async res => {
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Failed to update item quantity");
+      }
+      return res.json();
+    })
+    .then(updatedCart => setCart(updatedCart))
+    .catch(err => {
+      setError(err.message);
+      setTimeout(() => setError(''), 5000);
+    });
+  };
+
+  const removeCartItem = (cart_item_id) => {
+    setError('');
+    fetch(`/api/cart/items/${cart_item_id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(async res => {
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Failed to remove item");
+      }
+      return res.json();
+    })
+    .then(() => {
+      loadCart();
+      setSuccess("Item removed from cart");
+      setTimeout(() => setSuccess(''), 3000);
+    })
+    .catch(err => {
+      setError(err.message);
+      setTimeout(() => setError(''), 5000);
+    });
+  };
+
+  const emptyCart = () => {
+    if (!window.confirm("Are you sure you want to empty your cart?")) return;
+    setError('');
+    fetch('/api/cart', {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(async res => {
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Failed to empty cart");
+      }
+      return res.json();
+    })
+    .then(() => {
+      setCart({ items: [], total_items: 0, estimated_total: 0.0 });
+      setSuccess("Cart emptied successfully");
+      setTimeout(() => setSuccess(''), 3000);
+    })
+    .catch(err => {
+      setError(err.message);
+      setTimeout(() => setError(''), 5000);
+    });
+  };
+
   useEffect(() => {
     if (view === 'dashboard') {
       loadProducts();
       loadOrders();
+      loadCart();
     }
   }, [view]);
 
@@ -309,14 +429,89 @@ function App() {
                     <span style={{color: 'red'}}>Out of Stock</span>
                   )}
                 </div>
-                <button 
-                  onClick={() => buyProduct(p.product_id)} 
-                  disabled={p.total_stock <= 0}
-                >
-                  {p.total_stock > 0 ? "Buy Now" : "Out of Stock"}
-                </button>
+                <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
+                  <button 
+                    onClick={() => addToCart(p.product_id)} 
+                    disabled={p.total_stock <= 0}
+                    style={{ flex: 1 }}
+                  >
+                    {p.total_stock > 0 ? "+ Cart" : "Out of Stock"}
+                  </button>
+                  <button 
+                    onClick={() => buyProduct(p.product_id)} 
+                    disabled={p.total_stock <= 0}
+                    className="btn-secondary"
+                    style={{ flex: 1 }}
+                  >
+                    Buy Now
+                  </button>
+                </div>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      <div className="section">
+        <div className="section-header">
+          <h3>Shopping Cart ({cart.total_items || 0} items)</h3>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={loadCart} className="btn-link">↻ Refresh</button>
+            {cart.items && cart.items.length > 0 && (
+              <button onClick={emptyCart} className="btn-danger">Empty Cart</button>
+            )}
+          </div>
+        </div>
+
+        {(!cart.items || cart.items.length === 0) ? (
+          <p>Your shopping cart is empty.</p>
+        ) : (
+          <div>
+            <table className="cart-table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Unit Price</th>
+                  <th>Quantity</th>
+                  <th>Subtotal</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cart.items.map(item => (
+                  <tr key={item.cart_item_id}>
+                    <td><strong>{item.name}</strong></td>
+                    <td>${parseFloat(item.unit_price).toFixed(2)}</td>
+                    <td>
+                      <button 
+                        className="qty-btn" 
+                        onClick={() => updateCartQuantity(item.cart_item_id, item.quantity - 1)}
+                      >-</button>
+                      <span style={{ fontWeight: 'bold', margin: '0 5px' }}>{item.quantity}</span>
+                      <button 
+                        className="qty-btn" 
+                        onClick={() => updateCartQuantity(item.cart_item_id, item.quantity + 1)}
+                      >+</button>
+                    </td>
+                    <td>${parseFloat(item.subtotal).toFixed(2)}</td>
+                    <td>
+                      <button 
+                        className="btn-danger" 
+                        onClick={() => removeCartItem(item.cart_item_id)}
+                      >Remove</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="cart-summary">
+              <div>
+                <strong>Estimated Total:</strong>
+              </div>
+              <div style={{ color: '#28a745', fontWeight: 'bold', fontSize: '20px' }}>
+                ${parseFloat(cart.estimated_total || 0).toFixed(2)}
+              </div>
+            </div>
           </div>
         )}
       </div>

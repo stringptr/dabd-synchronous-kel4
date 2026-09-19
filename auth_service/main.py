@@ -31,10 +31,10 @@ Base = declarative_base()
 
 class User(Base):
     __tablename__ = "users"
-    user_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, primary_key=True)
     first_name = Column(String(50), nullable=False)
     last_name = Column(String(50), nullable=False)
-    email = Column(String(100), unique=True, index=True, nullable=False)
+    email = Column(String(100), unique=True, nullable=False)
     password = Column(String(255))
     phone = Column(String(30))
     address_line = Column(String(255))
@@ -52,7 +52,9 @@ def get_db():
         db.close()
 
 # Auth setup
-JWT_SECRET = os.getenv("JWT_SECRET", "supersecret")
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    raise ValueError("JWT_SECRET environment variable is missing!")
 JWT_ALGORITHM = "HS256"
 security = HTTPBearer()
 

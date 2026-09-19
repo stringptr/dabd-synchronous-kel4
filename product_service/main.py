@@ -6,7 +6,7 @@ from typing import Optional, List
 
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, Header
 from pydantic import BaseModel, Field
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, text, Numeric
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, text, Numeric, Table
 from sqlalchemy.orm import sessionmaker, declarative_base, Session, relationship
 
 # Logging setup
@@ -19,30 +19,35 @@ DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "postgres")
 DB_NAME = os.getenv("DB_NAME", "postgres")
 DB_PORT = os.getenv("DB_PORT", "5432")
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+SQLALCHEMY_DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+categories = Table("categories", Base.metadata, Column("category_id", Integer, primary_key=True))
+suppliers = Table("suppliers", Base.metadata, Column("supplier_id", Integer, primary_key=True))
+warehouses = Table("warehouses", Base.metadata, Column("warehouse_id", Integer, primary_key=True))
+
 class Product(Base):
     __tablename__ = "products"
-    product_id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, primary_key=True)
     name = Column(String(200), nullable=False)
     description = Column(String)
     price = Column(Numeric(10, 2), nullable=False)
     cost = Column(Numeric(10, 2))
-    category_id = Column(Integer)
-    supplier_id = Column(Integer)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    category_id = Column(Integer, ForeignKey("categories.category_id"))
+    supplier_id = Column(Integer, ForeignKey("suppliers.supplier_id"))
+    created_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
     
     inventory = relationship("Inventory", back_populates="product")
 
 class Inventory(Base):
     __tablename__ = "inventory"
-    product_id = Column(Integer, ForeignKey("products.product_id"), primary_key=True)
-    warehouse_id = Column(Integer, primary_key=True)
+    product_id = Column(Integer, ForeignKey("products.product_id", ondelete="CASCADE"), primary_key=True)
+    warehouse_id = Column(Integer, ForeignKey("warehouses.warehouse_id", ondelete="CASCADE"), primary_key=True)
     quantity_on_hand = Column(Integer, nullable=False, default=0)
+    reorder_level = Column(Integer, server_default=text("10"))
     
     product = relationship("Product", back_populates="inventory")
 
@@ -74,20 +79,43 @@ async def add_request_id_and_log(request: Request, call_next):
 
 # Schemas
 class ProductCreate(BaseModel):
-    name: str = Field(..., min_length=1)
+    name: str = Field(..., max_length=200)
     description: Optional[str] = None
-    price: float = Field(..., gt=0)
+    price: float = Field(..., ge=0)
+    cost: Optional[float] = Field(None, ge=0)
     category_id: Optional[int] = None
     supplier_id: Optional[int] = None
 
 class ProductResponse(BaseModel):
     product_id: int
     name: str
-    description: Optional[str]
+    description: Optional[str] = None
     price: float
-    category_id: Optional[int]
-    supplier_id: Optional[int]
+    category_id: Optional[int] = None
+    supplier_id: Optional[int] = None
     total_stock: int
+
+class ReservationItem(BaseModel):
+    product_id: int
+    quantity: int = Field(..., gt=0)
+
+class ReservationRequest(BaseModel):
+    cart_id: int
+    items: List[ReservationItem]
+
+# Internal security
+INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY")
+if not INTERNAL_API_KEY:
+    raise ValueError("INTERNAL_API_KEY environment variable is missing!")
+
+def require_internal(x_internal_secret: str = Header(...)):
+    if x_internal_secret != INTERNAL_API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden: Invalid internal secret")
+    return True
+
+@app.get("/internal/ping", dependencies=[Depends(require_internal)])
+def internal_ping():
+    return {"status": "internal_ok"}
 
 def require_admin(x_user_role: Optional[str] = Header(None)):
     if x_user_role != "admin":
