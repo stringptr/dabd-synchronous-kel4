@@ -295,6 +295,7 @@ def test_3_competing_operation_ids_final_stock():
     loser_res = r_b if r_a.status_code == 201 else r_a
 
     assert "Insufficient stock" in loser_res.json()["detail"]
+    assert loser_res.json().get("failure_code") == "INSUFFICIENT_STOCK"
 
     # Verify DB: winner has ACTIVE, loser has durable FAILED status
     conn = get_db_conn()
@@ -302,10 +303,10 @@ def test_3_competing_operation_ids_final_stock():
         cur.execute("SELECT reserved_quantity FROM inventory WHERE product_id = %s;", (pid,))
         total_reserved = sum(r["reserved_quantity"] for r in cur.fetchall())
 
-        cur.execute("SELECT status, failure_reason FROM stock_reservations WHERE operation_id = %s;", (winner_op,))
+        cur.execute("SELECT status, failure_reason, failure_code FROM stock_reservations WHERE operation_id = %s;", (winner_op,))
         winner_row = cur.fetchone()
 
-        cur.execute("SELECT status, failure_reason FROM stock_reservations WHERE operation_id = %s;", (loser_op,))
+        cur.execute("SELECT status, failure_reason, failure_code FROM stock_reservations WHERE operation_id = %s;", (loser_op,))
         loser_row = cur.fetchone()
     conn.close()
 
@@ -316,6 +317,7 @@ def test_3_competing_operation_ids_final_stock():
     assert total_reserved == 1, "Total reserved must be exactly 1"
     assert winner_row["status"] == "ACTIVE"
     assert loser_row["status"] == "FAILED"
+    assert loser_row["failure_code"] == "INSUFFICIENT_STOCK"
     assert "Insufficient stock" in loser_row["failure_reason"]
     print("PASSED: Test 3 (One winner, one durable failure recorded, no oversell)")
 
@@ -358,6 +360,7 @@ def test_4_conflicting_payloads_same_operation_id():
 
     conflict_res = r1 if r1.status_code == 409 else r2
     assert "conflicting payload" in conflict_res.json()["detail"].lower()
+    assert conflict_res.json().get("failure_code") == "CONFLICTING_PAYLOAD"
     print("PASSED: Test 4 (Conflicting payload rejected with 409)")
 
 def test_5_cross_product_deadlock_prevention():
@@ -468,6 +471,7 @@ def test_6_cross_replica_lifecycle_transitions():
     )
     assert release_res.status_code == 409
     assert "already confirmed" in release_res.json()["detail"].lower()
+    assert release_res.json().get("failure_code") == "ALREADY_CONFIRMED"
     print(f"Release after confirm rejected on Replica 2: HTTP {release_res.status_code}, Detail: {release_res.json()['detail']}")
     print("PASSED: Test 6 (Lifecycle transitions and idempotent confirm verified across replicas)")
 
@@ -491,15 +495,17 @@ def test_7_durable_failure_replay_after_restock():
     )
     assert req_fail.status_code == 409
     assert "Insufficient stock" in req_fail.json()["detail"]
+    assert req_fail.json().get("failure_code") == "INSUFFICIENT_STOCK"
     print(f"Initial request failed as expected: HTTP {req_fail.status_code}, Detail: {req_fail.json()['detail']}")
 
-    # Check DB: status must be FAILED, failure_reason recorded
+    # Check DB: status must be FAILED, failure_reason and failure_code recorded
     conn = get_db_conn()
     with conn.cursor() as cur:
-        cur.execute("SELECT status, failure_reason FROM stock_reservations WHERE operation_id = %s;", (op_id,))
+        cur.execute("SELECT status, failure_reason, failure_code FROM stock_reservations WHERE operation_id = %s;", (op_id,))
         fail_row = cur.fetchone()
     conn.close()
     assert fail_row["status"] == "FAILED"
+    assert fail_row["failure_code"] == "INSUFFICIENT_STOCK"
     print(f"DB durable failure row: {fail_row}")
 
     # Step 2: Restock inventory heavily (quantity_on_hand = 5000)
@@ -519,7 +525,70 @@ def test_7_durable_failure_replay_after_restock():
     print(f"Replay on Replica 2 after restock: HTTP {req_replay.status_code}, Detail: {req_replay.json()}")
     assert req_replay.status_code == 409, f"Expected 409 on replaying rejected operation, got {req_replay.status_code}"
     assert "Insufficient stock" in req_replay.json()["detail"]
+    assert req_replay.json().get("failure_code") == "INSUFFICIENT_STOCK"
     print("PASSED: Test 7 (Durable failure persisted and replayed deterministically after restock)")
+
+def test_8_product_not_found_replay_consistent_across_replicas():
+    print("\n--- Test 8: Product Not Found Consistent Replay across Replicas ---")
+    op_id = f"test8-notfound-{uuid.uuid4()}"
+    non_existent_pid = 999999
+
+    # Step 1: Initial request for non-existent product on Replica 1
+    req1 = requests.post(
+        f"{REPLICA_1_URL}/internal/reservations",
+        json={"operation_id": op_id, "items": [{"product_id": non_existent_pid, "quantity": 1}]},
+        headers=HEADERS,
+        timeout=5
+    )
+    print(f"Replica 1 Response (Initial): HTTP {req1.status_code}, Body: {req1.json()}")
+    assert req1.status_code == 404
+    assert req1.json().get("failure_code") == "PRODUCT_NOT_FOUND"
+    assert "not found" in req1.json()["detail"].lower()
+
+    # Step 2: Verify DB record exists with status FAILED and failure_code PRODUCT_NOT_FOUND
+    conn = get_db_conn()
+    with conn.cursor() as cur:
+        cur.execute("SELECT status, failure_reason, failure_code FROM stock_reservations WHERE operation_id = %s;", (op_id,))
+        fail_row = cur.fetchone()
+    conn.close()
+    assert fail_row is not None
+    assert fail_row["status"] == "FAILED"
+    assert fail_row["failure_code"] == "PRODUCT_NOT_FOUND"
+
+    # Step 3: Replay identical operation on Replica 2 -> Must return exact same HTTP 404 and failure_code
+    req2 = requests.post(
+        f"{REPLICA_2_URL}/internal/reservations",
+        json={"operation_id": op_id, "items": [{"product_id": non_existent_pid, "quantity": 1}]},
+        headers=HEADERS,
+        timeout=5
+    )
+    print(f"Replica 2 Response (Identical Replay): HTTP {req2.status_code}, Body: {req2.json()}")
+    assert req2.status_code == 404
+    assert req2.json().get("failure_code") == "PRODUCT_NOT_FOUND"
+    assert req2.json()["detail"] == req1.json()["detail"]
+
+    # Step 4: Replay with conflicting payload on Replica 1 -> Must return HTTP 409 CONFLICTING_PAYLOAD
+    req3 = requests.post(
+        f"{REPLICA_1_URL}/internal/reservations",
+        json={"operation_id": op_id, "items": [{"product_id": non_existent_pid, "quantity": 2}]},
+        headers=HEADERS,
+        timeout=5
+    )
+    print(f"Replica 1 Response (Conflicting Replay): HTTP {req3.status_code}, Body: {req3.json()}")
+    assert req3.status_code == 409
+    assert req3.json().get("failure_code") == "CONFLICTING_PAYLOAD"
+
+    # Step 5: Get reservation by op_id on Replica 2 -> Returns HTTP 200 with status=FAILED, failure_code=PRODUCT_NOT_FOUND
+    req4 = requests.get(
+        f"{REPLICA_2_URL}/internal/reservations/{op_id}",
+        headers=HEADERS,
+        timeout=5
+    )
+    print(f"Replica 2 GET /internal/reservations/{op_id}: HTTP {req4.status_code}, Body: {req4.json()}")
+    assert req4.status_code == 200
+    assert req4.json()["status"] == "FAILED"
+    assert req4.json()["failure_code"] == "PRODUCT_NOT_FOUND"
+    print("PASSED: Test 8 (Product not found returns consistent HTTP 404 & failure_code on replay across replicas)")
 
 def main():
     parser = argparse.ArgumentParser(description="Stage 2B Two-Replica Concurrency Test Suite")
@@ -538,9 +607,10 @@ def main():
         test_5_cross_product_deadlock_prevention()
         test_6_cross_replica_lifecycle_transitions()
         test_7_durable_failure_replay_after_restock()
+        test_8_product_not_found_replay_consistent_across_replicas()
 
         print("\n" + "*" * 60)
-        print("ALL 7 TWO-REPLICA CONCURRENCY & SAFEGUARD TESTS PASSED!")
+        print("ALL 8 TWO-REPLICA CONCURRENCY & SAFEGUARD TESTS PASSED!")
         print("*" * 60)
     finally:
         if not args.no_teardown and not args.no_setup:
@@ -548,3 +618,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

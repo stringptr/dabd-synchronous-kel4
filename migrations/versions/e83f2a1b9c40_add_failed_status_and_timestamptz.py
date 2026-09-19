@@ -19,10 +19,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # 1. Add failure_reason to stock_reservations
+    # 1. Add failure_code and failure_reason to stock_reservations
+    op.add_column('stock_reservations', sa.Column('failure_code', sa.String(length=50), nullable=True))
     op.add_column('stock_reservations', sa.Column('failure_reason', sa.String(length=255), nullable=True))
 
-    # 2. Update status check constraint to include FAILED
+    # 2. Update status check constraint to include PENDING and FAILED
     op.drop_constraint('chk_stock_reservations_status', 'stock_reservations', type_='check')
     op.create_check_constraint(
         'chk_stock_reservations_status',
@@ -38,6 +39,29 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Safe downgrade of e83f2a1b9c40.
+    
+    Supported downgrade conditions:
+    - Allowed ONLY when stock_reservations contains NO records with status 'PENDING' or 'FAILED'.
+    - If incompatible records exist, this downgrade aborts immediately without modifying
+      tables, deleting records, or rewriting reservation history.
+    """
+    bind = op.get_bind()
+
+    # Precondition check: verify no incompatible status values exist
+    incompatible_count = bind.execute(
+        sa.text("SELECT COUNT(*) FROM stock_reservations WHERE status IN ('PENDING', 'FAILED')")
+    ).scalar()
+
+    if incompatible_count and incompatible_count > 0:
+        raise RuntimeError(
+            f"Precondition failed: Cannot safely downgrade e83f2a1b9c40 because stock_reservations contains "
+            f"{incompatible_count} record(s) with status 'PENDING' or 'FAILED'. "
+            "Reverting to check constraint ('ACTIVE', 'CONFIRMED', 'RELEASED', 'EXPIRED') on populated "
+            "data would cause a constraint violation or require destructive data loss. "
+            "Downgrade is aborted to protect data integrity."
+        )
+
     # 1. Convert timestamp columns back to TIMESTAMP WITHOUT TIME ZONE
     op.execute("ALTER TABLE stock_reservation_items ALTER COLUMN created_at TYPE TIMESTAMP WITHOUT TIME ZONE USING created_at AT TIME ZONE 'UTC'")
     op.execute("ALTER TABLE stock_reservations ALTER COLUMN updated_at TYPE TIMESTAMP WITHOUT TIME ZONE USING updated_at AT TIME ZONE 'UTC'")
@@ -52,5 +76,6 @@ def downgrade() -> None:
         "status IN ('ACTIVE', 'CONFIRMED', 'RELEASED', 'EXPIRED')"
     )
 
-    # 3. Drop failure_reason column
+    # 3. Drop failure_reason and failure_code columns
     op.drop_column('stock_reservations', 'failure_reason')
+    op.drop_column('stock_reservations', 'failure_code')

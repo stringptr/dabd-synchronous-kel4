@@ -727,3 +727,148 @@ def test_confirm_lock_wait_after_expiration(test_tracker):
         reserved = conn.execute(text("SELECT reserved_quantity FROM inventory WHERE product_id = :pid"), {"pid": pid}).scalar()
         assert status == "EXPIRED"
         assert reserved == 0
+
+# 25. Consistent failure responses for product not found (Initial, Identical Replay, Conflicting Replay, Status Lookup)
+def test_product_not_found_consistent_lifecycle(test_tracker):
+    _, op_ids = test_tracker
+    op_id = f"op_pnf_{uuid.uuid4().hex[:8]}"
+    op_ids.append(op_id)
+    nonexistent_pid = 999999
+
+    payload = {
+        "operation_id": op_id,
+        "items": [{"product_id": nonexistent_pid, "quantity": 1}]
+    }
+
+    # Step 1: Initial failure -> HTTP 404 with failure_code = PRODUCT_NOT_FOUND
+    res1 = client.post("/internal/reservations", json=payload, headers=INTERNAL_HEADERS)
+    assert res1.status_code == 404
+    assert res1.json()["failure_code"] == "PRODUCT_NOT_FOUND"
+    assert "Products not found" in res1.json()["detail"]
+    assert "Products not found" in res1.json()["failure_reason"]
+
+    # Step 2: Identical replay -> MUST return HTTP 404 with identical failure_code and reason!
+    res2 = client.post("/internal/reservations", json=payload, headers=INTERNAL_HEADERS)
+    assert res2.status_code == 404, f"Expected 404 on replay, got {res2.status_code}"
+    assert res2.json()["failure_code"] == "PRODUCT_NOT_FOUND"
+    assert res2.json()["failure_reason"] == res1.json()["failure_reason"]
+
+    # Step 3: Conflicting replay with different payload -> HTTP 409 with failure_code = CONFLICTING_PAYLOAD
+    conflict_payload = {
+        "operation_id": op_id,
+        "items": [{"product_id": nonexistent_pid, "quantity": 2}]
+    }
+    res3 = client.post("/internal/reservations", json=conflict_payload, headers=INTERNAL_HEADERS)
+    assert res3.status_code == 409
+    assert res3.json()["failure_code"] == "CONFLICTING_PAYLOAD"
+    assert "conflicting payload" in res3.json()["detail"].lower()
+
+    # Step 4: Status lookup GET /internal/reservations/{op_id} -> HTTP 200 with status=FAILED and failure_code=PRODUCT_NOT_FOUND
+    status_res = client.get(f"/internal/reservations/{op_id}", headers=INTERNAL_HEADERS)
+    assert status_res.status_code == 200
+    d = status_res.json()
+    assert d["status"] == "FAILED"
+    assert d["failure_code"] == "PRODUCT_NOT_FOUND"
+    assert "Products not found" in d["failure_reason"]
+
+# 26. Consistent failure responses for insufficient stock (Initial, Identical Replay, Conflicting Replay, Status Lookup)
+def test_insufficient_stock_consistent_lifecycle(test_tracker):
+    pids, op_ids = test_tracker
+    pid = create_test_product(pids, warehouses_stock={1: 3})
+    op_id = f"op_ins_stock_{uuid.uuid4().hex[:8]}"
+    op_ids.append(op_id)
+
+    payload = {
+        "operation_id": op_id,
+        "items": [{"product_id": pid, "quantity": 10}]
+    }
+
+    # Step 1: Initial failure -> HTTP 409 with failure_code = INSUFFICIENT_STOCK
+    res1 = client.post("/internal/reservations", json=payload, headers=INTERNAL_HEADERS)
+    assert res1.status_code == 409
+    assert res1.json()["failure_code"] == "INSUFFICIENT_STOCK"
+    assert "Insufficient stock" in res1.json()["detail"]
+
+    # Step 2: Restock heavily
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE inventory SET quantity_on_hand = 1000 WHERE product_id = :pid"), {"pid": pid})
+
+    # Step 3: Identical replay -> MUST return HTTP 409 with identical failure_code and reason!
+    res2 = client.post("/internal/reservations", json=payload, headers=INTERNAL_HEADERS)
+    assert res2.status_code == 409
+    assert res2.json()["failure_code"] == "INSUFFICIENT_STOCK"
+    assert res2.json()["failure_reason"] == res1.json()["failure_reason"]
+
+    # Step 4: Conflicting replay -> HTTP 409 with failure_code = CONFLICTING_PAYLOAD
+    conflict_payload = {
+        "operation_id": op_id,
+        "items": [{"product_id": pid, "quantity": 20}]
+    }
+    res3 = client.post("/internal/reservations", json=conflict_payload, headers=INTERNAL_HEADERS)
+    assert res3.status_code == 409
+    assert res3.json()["failure_code"] == "CONFLICTING_PAYLOAD"
+
+    # Step 5: Status lookup -> HTTP 200 with status=FAILED and failure_code=INSUFFICIENT_STOCK
+    status_res = client.get(f"/internal/reservations/{op_id}", headers=INTERNAL_HEADERS)
+    assert status_res.status_code == 200
+    d = status_res.json()
+    assert d["status"] == "FAILED"
+    assert d["failure_code"] == "INSUFFICIENT_STOCK"
+    assert "Insufficient stock" in d["failure_reason"]
+
+# 27. Fail safely on missing inventory records during release_reservation
+def test_release_reservation_fails_safely_on_missing_inventory_record(test_tracker, monkeypatch):
+    pids, op_ids = test_tracker
+    pid = create_test_product(pids, warehouses_stock={1: 5})
+    op_id = f"op_missing_inv_{uuid.uuid4().hex[:8]}"
+    op_ids.append(op_id)
+
+    # Step 1: Create active reservation
+    res = client.post("/internal/reservations", json={
+        "operation_id": op_id,
+        "items": [{"product_id": pid, "quantity": 2}]
+    }, headers=INTERNAL_HEADERS)
+    assert res.status_code == 201
+    assert res.json()["status"] == "ACTIVE"
+
+    # Step 2: Controlled fault simulation - intercept query to simulate missing inventory record
+    from sqlalchemy.orm import Query
+    orig_first = Query.first
+    fault_active = True
+
+    def mock_first(self):
+        if fault_active:
+            # Check if this query is for Inventory with_for_update
+            entities = [desc.get("entity") for desc in self.column_descriptions if isinstance(desc, dict)]
+            if Inventory in entities:
+                return None
+        return orig_first(self)
+
+    monkeypatch.setattr(Query, "first", mock_first)
+
+    # Step 3: Attempt release_reservation -> MUST return HTTP 500 integrity error
+    rel_res = client.post(f"/internal/reservations/{op_id}/release", headers=INTERNAL_HEADERS)
+    assert rel_res.status_code == 500
+    assert rel_res.json()["failure_code"] == "DATA_INTEGRITY_VIOLATION"
+    assert "inventory record missing" in rel_res.json()["detail"].lower()
+
+    # Step 4: Verify reservation was NOT marked RELEASED in database (transaction rolled back)
+    with engine.connect() as conn:
+        status = conn.execute(text("SELECT status FROM stock_reservations WHERE operation_id = :op"), {"op": op_id}).scalar()
+        assert status == "ACTIVE", f"Expected reservation to remain ACTIVE after failed release, but was {status}"
+
+    # Step 5: Disable fault simulation and test recovery
+    fault_active = False
+
+    # Step 6: Retrying release now succeeds cleanly
+    rel_res2 = client.post(f"/internal/reservations/{op_id}/release", headers=INTERNAL_HEADERS)
+    assert rel_res2.status_code == 200
+    assert rel_res2.json()["status"] == "RELEASED"
+
+    # Step 7: Verify DB state is RELEASED and reserved_quantity was decremented
+    with engine.connect() as conn:
+        status = conn.execute(text("SELECT status FROM stock_reservations WHERE operation_id = :op"), {"op": op_id}).scalar()
+        reserved = conn.execute(text("SELECT reserved_quantity FROM inventory WHERE product_id = :pid"), {"pid": pid}).scalar()
+        assert status == "RELEASED"
+        assert reserved == 0
+
