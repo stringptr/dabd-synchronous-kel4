@@ -1,12 +1,13 @@
 import os
 import uuid
 import time
+import asyncio
 import logging
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from decimal import Decimal, ROUND_HALF_UP
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict, Any
 
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, Header
 from pydantic import BaseModel, Field
@@ -50,6 +51,10 @@ class Order(Base):
     total_amount = Column(Numeric(10, 2), nullable=False)
     
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+    checkout = relationship("Checkout", uselist=False, back_populates="order")
+    payment = relationship("Payment", uselist=False, back_populates="order")
+    payment_attempts = relationship("PaymentAttempt", back_populates="order")
+    cancellation = relationship("OrderCancellation", uselist=False, back_populates="order")
 
 class OrderItem(Base):
     __tablename__ = "order_items"
@@ -100,6 +105,11 @@ class Checkout(Base):
     items_snapshot = Column(JSON().with_variant(JSONB, "postgresql"), nullable=False)
     failure_code = Column(String(64), nullable=True)
     failure_reason = Column(String, nullable=True)
+    reservation_expires_at = Column(DateTime(timezone=True), nullable=True)
+    lease_worker_id = Column(String(64), nullable=True)
+    lease_expires_at = Column(DateTime(timezone=True), nullable=True)
+    reconcile_attempts = Column(Integer, server_default='0', default=0, nullable=False)
+    next_reconcile_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP"), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP"), nullable=False)
 
@@ -107,12 +117,82 @@ class Checkout(Base):
         UniqueConstraint("user_id", "idempotency_key", name="uq_checkouts_user_idempotency"),
         CheckConstraint("total_amount >= 0", name="chk_checkouts_total_positive"),
         CheckConstraint(
-            "status IN ('INITIATED', 'RESERVING', 'RESERVED', 'UNKNOWN', 'FAILED', 'COMPENSATION_REQUIRED', 'CANCELLED')",
+            "status IN ('INITIATED', 'RESERVING', 'RESERVED', 'UNKNOWN', 'FAILED', 'COMPENSATION_REQUIRED', 'CANCELLED', 'COMPLETED')",
             name="chk_checkouts_status"
         ),
     )
 
-    order = relationship("Order")
+    order = relationship("Order", back_populates="checkout")
+
+class Payment(Base):
+    __tablename__ = "payments"
+    payment_id = Column(Integer, primary_key=True, autoincrement=True)
+    order_id = Column(Integer, ForeignKey("orders.order_id"), unique=True, nullable=False)
+    payment_date = Column(DateTime, default=datetime.utcnow)
+    amount = Column(Numeric(10, 2), nullable=False)
+    method = Column(String(20), nullable=False)
+    status = Column(String(20), nullable=False, default="Pending")
+
+    order = relationship("Order", back_populates="payment")
+
+class PaymentAttempt(Base):
+    __tablename__ = "payment_attempts"
+    attempt_id = Column(Integer, primary_key=True, autoincrement=True)
+    order_id = Column(Integer, ForeignKey("orders.order_id", ondelete="RESTRICT"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="RESTRICT"), nullable=False)
+    operation_id = Column(String(64), unique=True, nullable=False)
+    idempotency_key = Column(String(128), nullable=False)
+    request_fingerprint = Column(String(64), nullable=False)
+    amount = Column(Numeric(10, 2), nullable=False)
+    method = Column(String(32), nullable=False)
+    simulated_outcome = Column(String(32), server_default="SUCCESS", default="SUCCESS", nullable=False)
+    status = Column(String(32), nullable=False)
+    stage = Column(String(32), server_default="INITIATED", default="INITIATED", nullable=False)
+    failure_code = Column(String(64), nullable=True)
+    failure_reason = Column(String, nullable=True)
+    lease_worker_id = Column(String(64), nullable=True)
+    lease_expires_at = Column(DateTime(timezone=True), nullable=True)
+    reconcile_attempts = Column(Integer, server_default="0", default=0, nullable=False)
+    next_reconcile_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP"), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP"), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("order_id", "idempotency_key", name="uq_payment_attempts_order_idempotency"),
+        CheckConstraint("amount >= 0", name="chk_payment_attempts_amount"),
+        CheckConstraint("method IN ('Credit Card', 'PayPal', 'Bank Transfer', 'Gift Card')", name="chk_payment_attempts_method"),
+        CheckConstraint("simulated_outcome IN ('SUCCESS', 'DECLINE', 'TIMEOUT')", name="chk_payment_attempts_outcome"),
+        CheckConstraint(
+            "status IN ('INITIATED', 'PROCESSING', 'CONFIRMING', 'SUCCEEDED', 'FAILED', 'UNKNOWN', 'EXPIRED')",
+            name="chk_payment_attempts_status"
+        ),
+        CheckConstraint(
+            "stage IN ('INITIATED', 'SIMULATED_DECLINE', 'CONFIRM_NOT_SENT', 'CONFIRM_IN_FLIGHT', 'CONFIRM_VERIFIED', 'LOCAL_FINALIZE_PENDING', 'FINALIZED')",
+            name="chk_payment_attempts_stage"
+        ),
+    )
+
+    order = relationship("Order", back_populates="payment_attempts")
+
+class OrderCancellation(Base):
+    __tablename__ = "order_cancellations"
+    cancellation_id = Column(Integer, primary_key=True, autoincrement=True)
+    order_id = Column(Integer, ForeignKey("orders.order_id", ondelete="RESTRICT"), unique=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="RESTRICT"), nullable=False)
+    operation_id = Column(String(64), unique=True, nullable=False)
+    idempotency_key = Column(String(128), nullable=False)
+    request_fingerprint = Column(String(64), nullable=False)
+    status = Column(String(32), nullable=False)
+    reason = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP"), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP"), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "idempotency_key", name="uq_order_cancellations_user_idempotency"),
+        CheckConstraint("status IN ('PROCESSING', 'SUCCEEDED', 'FAILED', 'UNKNOWN')", name="chk_order_cancellations_status"),
+    )
+
+    order = relationship("Order", back_populates="cancellation")
 
 def get_db():
     db = SessionLocal()
@@ -375,6 +455,94 @@ def execute_verifiable_release(reservation_op_id: str) -> bool:
     """Verifiable release alias delegating to release_reservation_internal."""
     return release_reservation_internal(reservation_op_id)
 
+def to_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+def confirm_reservation_internal(
+    reservation_op_id: str
+) -> Tuple[str, Optional[dict], Optional[str], Optional[str], bool]:
+    """
+    Calls Product Service POST /internal/reservations/{operation_id}/confirm across replicas.
+    Returns: (status, response_data, failure_code, failure_reason, is_ambiguous).
+
+    Outcomes:
+    - 200 OK with status="CONFIRMED": ("CONFIRMED", data, None, None, False)
+    - 409 Conflict with failure_code="RESERVATION_EXPIRED": ("EXPIRED", data, "RESERVATION_EXPIRED", reason, False)
+    - 409 Conflict with failure_code="ALREADY_RELEASED": ("RELEASED", data, "ALREADY_RELEASED", reason, False)
+    - 409/404 with other documented failure code: ("FAILED", data, failure_code, failure_reason, False)
+    - 500, 502, 503, 504, timeouts, connection errors: ("UNKNOWN", None, error_code, error_reason, True)
+    """
+    replicas = get_product_service_replicas()
+    headers = {
+        "X-Internal-Secret": INTERNAL_API_KEY,
+        "Content-Type": "application/json"
+    }
+    last_error = None
+    last_status = None
+    for replica in replicas:
+        try:
+            with httpx.Client(timeout=httpx.Timeout(5.0, connect=3.0)) as client:
+                resp = client.post(f"{replica}/internal/reservations/{reservation_op_id}/confirm", headers=headers)
+            
+            if resp.status_code == 200:
+                try:
+                    data = resp.json()
+                    if isinstance(data, dict) and data.get("status") == "CONFIRMED":
+                        return ("CONFIRMED", data, None, None, False)
+                    return ("UNKNOWN", data if isinstance(data, dict) else None, "MALFORMED_RESPONSE", "Malformed 200 confirm response schema", True)
+                except Exception as e:
+                    return ("UNKNOWN", None, "MALFORMED_RESPONSE", f"Failed to parse 200 confirm response: {e}", True)
+
+            elif resp.status_code in (400, 404, 409):
+                try:
+                    data = resp.json()
+                    if isinstance(data, dict):
+                        fc = data.get("failure_code")
+                        fr = data.get("failure_reason") or str(data.get("detail"))
+                        if fc == "RESERVATION_EXPIRED":
+                            return ("EXPIRED", data, fc, fr, False)
+                        elif fc == "ALREADY_RELEASED":
+                            return ("RELEASED", data, fc, fr, False)
+                        elif fc in DOCUMENTED_BUSINESS_FAILURE_CODES:
+                            return ("FAILED", data, fc, fr, False)
+                except Exception:
+                    pass
+
+                last_error = f"Replica {replica} returned undocumented HTTP {resp.status_code}: {resp.text}"
+                last_status = resp.status_code
+                continue
+
+            elif resp.status_code in (500, 504):
+                last_error = f"Replica {replica} returned HTTP {resp.status_code}: {resp.text}"
+                last_status = resp.status_code
+                return ("UNKNOWN", None, f"HTTP_{resp.status_code}", last_error, True)
+
+            elif resp.status_code in (502, 503):
+                last_error = f"Replica {replica} returned HTTP {resp.status_code}"
+                last_status = resp.status_code
+                continue
+
+            else:
+                last_error = f"Replica {replica} returned unexpected HTTP {resp.status_code}: {resp.text}"
+                last_status = resp.status_code
+                return ("UNKNOWN", None, f"HTTP_{resp.status_code}", last_error, True)
+
+        except (httpx.ConnectError, httpx.ConnectTimeout) as e:
+            last_error = f"Connection error to {replica}: {e}"
+            continue
+        except (httpx.ReadTimeout, httpx.WriteTimeout) as e:
+            return ("UNKNOWN", None, "TIMEOUT", f"Timeout communicating with {replica}: {e}", True)
+        except Exception as e:
+            last_error = str(e)
+            continue
+
+    err_code = f"HTTP_{last_status}" if last_status else "CONNECT_FAILURE"
+    return ("UNKNOWN", None, err_code, f"All replicas failed: {last_error}", True)
+
 # App setup
 app = FastAPI(title="Order Service")
 
@@ -458,6 +626,91 @@ class OrderResponse(BaseModel):
     status: str
     total_amount: float
     items: List[OrderItemResponse]
+    reservation_expires_at: Optional[datetime] = None
+
+IN_FLIGHT_PAYMENT_STATUSES = ("INITIATED", "PROCESSING", "CONFIRMING", "UNKNOWN")
+
+class PaymentRequest(BaseModel):
+    method: str = Field("Credit Card", description="Payment method")
+    simulated_outcome: str = Field("SUCCESS", description="SUCCESS, DECLINE, or TIMEOUT")
+    amount: Optional[Decimal] = None
+
+class PaymentResponse(BaseModel):
+    attempt_id: int
+    order_id: int
+    status: str
+    stage: str
+    method: str
+    amount: Decimal
+    simulated_outcome: str
+    failure_code: Optional[str] = None
+    failure_reason: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+class CancelRequest(BaseModel):
+    reason: Optional[str] = "User requested cancellation"
+
+class CancelResponse(BaseModel):
+    cancellation_id: int
+    order_id: int
+    status: str
+    reason: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+class PaymentAttemptSummary(BaseModel):
+    attempt_id: int
+    operation_id: str
+    method: str
+    amount: Decimal
+    simulated_outcome: str
+    status: str
+    stage: str
+    failure_code: Optional[str] = None
+    failure_reason: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+class PaymentStatusResponse(BaseModel):
+    order_id: int
+    order_status: str
+    total_amount: Decimal
+    reservation_expires_at: Optional[datetime] = None
+    is_expired: bool
+    can_pay: bool
+    can_cancel: bool
+    payment: Optional[dict] = None
+    payment_attempts: List[PaymentAttemptSummary] = []
+
+def compute_payment_fingerprint(order_id: int, method: str, simulated_outcome: str, amount: Decimal) -> str:
+    amt_str = str(Decimal(str(amount)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+    raw = f"{order_id}:{method}:{simulated_outcome}:{amt_str}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+def compute_cancellation_fingerprint(order_id: int, reason: Optional[str]) -> str:
+    raw = f"{order_id}:{reason or ''}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+def build_payment_response(att: PaymentAttempt) -> PaymentResponse:
+    return PaymentResponse(
+        attempt_id=att.attempt_id,
+        order_id=att.order_id,
+        status=att.status,
+        stage=att.stage,
+        method=att.method,
+        amount=att.amount,
+        simulated_outcome=att.simulated_outcome,
+        failure_code=att.failure_code,
+        failure_reason=att.failure_reason,
+        created_at=att.created_at
+    )
+
+def build_cancel_response(canc: OrderCancellation) -> CancelResponse:
+    return CancelResponse(
+        cancellation_id=canc.cancellation_id,
+        order_id=canc.order_id,
+        status=canc.status,
+        reason=canc.reason,
+        created_at=canc.created_at
+    )
 
 def get_current_user(x_user_sub: Optional[str] = Header(None), x_user_role: Optional[str] = Header(None)):
     if not x_user_sub:
@@ -584,7 +837,7 @@ def reconcile_and_recover_checkout(checkout_id: int, clear_cart: bool = False, d
             active_db.commit()
             raise HTTPException(status_code=404, detail="Checkout not found")
 
-        if chk.status in ("RESERVED", "FAILED", "CANCELLED") or chk.order_id is not None:
+        if chk.status in ("RESERVED", "COMPLETED", "FAILED", "CANCELLED") or chk.order_id is not None:
             active_db.commit()
             return chk
 
@@ -673,7 +926,7 @@ def reconcile_and_recover_checkout(checkout_id: int, clear_cart: bool = False, d
             raise HTTPException(status_code=404, detail="Checkout not found")
 
         # Concurrent check: if another worker already finalized it
-        if chk.status in ("RESERVED", "FAILED", "CANCELLED") or chk.order_id is not None:
+        if chk.status in ("RESERVED", "COMPLETED", "FAILED", "CANCELLED") or chk.order_id is not None:
             active_db.commit()
             return chk
 
@@ -795,6 +1048,14 @@ def reconcile_and_recover_checkout(checkout_id: int, clear_cart: bool = False, d
                     chk.status = "RESERVED"
                     chk.failure_code = None
                     chk.failure_reason = None
+                    if exp_str:
+                        try:
+                            exp_dt = datetime.fromisoformat(exp_str.replace("Z", "+00:00"))
+                            if exp_dt.tzinfo is None:
+                                exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+                            chk.reservation_expires_at = exp_dt
+                        except Exception:
+                            pass
 
             elif res_status in ("FAILED", "RELEASED", "EXPIRED"):
                 chk.status = "FAILED"
@@ -878,7 +1139,7 @@ def execute_checkout_orchestration(
                     detail="Idempotency-Key reused with conflicting payload options"
                 )
             
-            if existing_status == "RESERVED":
+            if existing_status in ("RESERVED", "COMPLETED"):
                 order = active_db.query(Order).filter(Order.order_id == existing_order_id).first() if existing_order_id else None
                 active_db.commit()
                 chk = active_db.query(Checkout).filter(Checkout.checkout_id == existing_id).first()
@@ -919,14 +1180,14 @@ def execute_checkout_orchestration(
                 else:
                     curr_st = None
                 active_db.commit()
-                if curr_st in ("RESERVED", "FAILED", "CANCELLED"):
+                if curr_st in ("RESERVED", "COMPLETED", "FAILED", "CANCELLED"):
                     existing_status = curr_st
                     existing_order_id = curr_oid
                     existing_fail_code = curr_fc
                     existing_fail_reason = curr_fr
                     break
 
-            if existing_status == "RESERVED":
+            if existing_status in ("RESERVED", "COMPLETED"):
                 order = active_db.query(Order).filter(Order.order_id == existing_order_id).first() if existing_order_id else None
                 active_db.commit()
                 chk = active_db.query(Checkout).filter(Checkout.checkout_id == existing_id).first()
@@ -956,7 +1217,7 @@ def execute_checkout_orchestration(
             if active_db.in_transaction():
                 active_db.commit()
             resolved = reconcile_and_recover_checkout(existing_id, clear_cart=clear_cart, db=active_db)
-            if resolved.status == "RESERVED":
+            if resolved.status in ("RESERVED", "COMPLETED"):
                 order = active_db.query(Order).filter(Order.order_id == resolved.order_id).first() if resolved.order_id else None
                 active_db.commit()
                 return resolved, order
@@ -1093,14 +1354,14 @@ def execute_checkout_orchestration(
                     else:
                         curr_st = None
                     active_db.commit()
-                    if curr_st in ("RESERVED", "FAILED", "CANCELLED"):
+                    if curr_st in ("RESERVED", "COMPLETED", "FAILED", "CANCELLED"):
                         w_status = curr_st
                         w_order_id = curr_oid
                         w_fail_code = curr_fc
                         w_fail_reason = curr_fr
                         break
 
-                if w_status == "RESERVED":
+                if w_status in ("RESERVED", "COMPLETED"):
                     order = active_db.query(Order).filter(Order.order_id == w_order_id).first() if w_order_id else None
                     active_db.commit()
                     chk = active_db.query(Checkout).filter(Checkout.checkout_id == w_id).first()
@@ -1121,7 +1382,7 @@ def execute_checkout_orchestration(
                 if active_db.in_transaction():
                     active_db.commit()
                 resolved = reconcile_and_recover_checkout(w_id, clear_cart=clear_cart, db=active_db)
-                if resolved.status == "RESERVED":
+                if resolved.status in ("RESERVED", "COMPLETED"):
                     order = active_db.query(Order).filter(Order.order_id == resolved.order_id).first() if resolved.order_id else None
                     active_db.commit()
                     return resolved, order
@@ -1167,9 +1428,9 @@ def execute_checkout_orchestration(
                 raise HTTPException(status_code=404, detail="Checkout not found")
 
             # Check if concurrent recovery or process already finalized it or initiated compensation
-            if chk.status in ("RESERVED", "FAILED", "CANCELLED", "COMPENSATION_REQUIRED"):
+            if chk.status in ("RESERVED", "COMPLETED", "FAILED", "CANCELLED", "COMPENSATION_REQUIRED"):
                 active_db.commit()
-                if chk.status == "RESERVED":
+                if chk.status in ("RESERVED", "COMPLETED"):
                     order_obj = active_db.query(Order).filter(Order.order_id == chk.order_id).first() if chk.order_id else None
                     active_db.commit()
                     return chk, order_obj
@@ -1348,6 +1609,14 @@ def execute_checkout_orchestration(
                             cart.updated_at = datetime.now(timezone.utc)
 
                 chk.status = "RESERVED"
+                if exp_str:
+                    try:
+                        exp_dt = datetime.fromisoformat(exp_str.replace("Z", "+00:00"))
+                        if exp_dt.tzinfo is None:
+                            exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+                        chk.reservation_expires_at = exp_dt
+                    except Exception:
+                        pass
                 chk.updated_at = datetime.now(timezone.utc)
                 pre_commit_phase = False
                 active_db.commit()
@@ -1376,7 +1645,7 @@ def execute_checkout_orchestration(
                             ).first()
                             if persisted_chk:
                                 inspection_successful = True
-                                if persisted_chk.status == "RESERVED" and persisted_chk.order_id:
+                                if persisted_chk.status in ("RESERVED", "COMPLETED") and persisted_chk.order_id:
                                     committed_successfully = True
                                 # Note: finding RESERVING/UNKNOWN/order_id=None does NOT prove
                                 # rollback because the commit outcome is uncertain. Do NOT infer rollback!
@@ -1612,7 +1881,7 @@ def checkout(
         db=db
     )
 
-    if existing and chk.status == "RESERVED":
+    if existing and chk.status in ("RESERVED", "COMPLETED"):
         response.status_code = status.HTTP_200_OK
 
     try:
@@ -1693,6 +1962,7 @@ def create_order(
     if not order:
         raise HTTPException(status_code=500, detail="Order record missing after checkout reservation")
 
+    res_exp = to_utc(chk.reservation_expires_at) if (chk and chk.reservation_expires_at) else None
     return OrderResponse(
         order_id=order.order_id,
         user_id=order.user_id,
@@ -1705,7 +1975,8 @@ def create_order(
                 quantity=i.quantity,
                 unit_price=float(i.unit_price)
             ) for i in order.items
-        ]
+        ],
+        reservation_expires_at=res_exp
     )
 
 @app.get("/orders", response_model=List[OrderResponse])
@@ -1728,14 +1999,968 @@ def get_orders(db: Session = Depends(get_db), user=Depends(get_current_user)):
                 unit_price=float(i.unit_price)
             ) for i in o.items
         ]
+        chk = db.query(Checkout).filter(Checkout.order_id == o.order_id).first()
+        res_exp = to_utc(chk.reservation_expires_at) if (chk and chk.reservation_expires_at) else None
         res.append(OrderResponse(
             order_id=o.order_id,
             user_id=o.user_id,
             status=o.status,
             total_amount=float(o.total_amount),
-            items=res_items
+            items=res_items,
+            reservation_expires_at=res_exp
         ))
     return res
+
+# =============================================================================
+# Stage 2D: Payment, Order Cancellation, Expiration, and Autonomous Recovery
+# =============================================================================
+
+def reconcile_single_payment_attempt(attempt_id: int, db: Session) -> Optional[PaymentAttempt]:
+    """
+    Reconciles an in-flight or ambiguous payment attempt with 3-phase execution:
+    - Phase A: Inspect attempt state and order under lock, commit/close.
+    - Phase B: Probe Product Service status outside database transaction.
+    - Phase C: Finalize state with row-level locks following strict hierarchy:
+               Order -> Checkout -> PaymentAttempt.
+    """
+    if db.in_transaction():
+        db.commit()
+
+    attempt = db.query(PaymentAttempt).filter(PaymentAttempt.attempt_id == attempt_id).with_for_update().first()
+    if not attempt:
+        db.commit()
+        return None
+
+    if attempt.status in ("SUCCEEDED", "FAILED", "EXPIRED"):
+        db.commit()
+        return attempt
+
+    order_id = attempt.order_id
+    simulated_outcome = attempt.simulated_outcome
+    amount = attempt.amount
+    method = attempt.method
+
+    chk = db.query(Checkout).filter(Checkout.order_id == order_id).first()
+    if not chk:
+        attempt.status = "FAILED"
+        attempt.failure_code = "NO_CHECKOUT"
+        attempt.failure_reason = "No checkout found for payment attempt order"
+        attempt.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        return attempt
+
+    reservation_op_id = chk.reservation_op_id
+    db.commit()
+
+    # Phase B: Remote probe outside TX
+    assert not db.in_transaction(), "Database transaction active during payment reconciliation probe"
+
+    if simulated_outcome == "DECLINE":
+        probe_status = "SIMULATED_DECLINE"
+        probe_data = None
+        is_expired = False
+        is_uncertain = False
+    else:
+        res_tuple = get_reservation_internal(reservation_op_id)
+        probe_status = res_tuple[0]  # 'ACTIVE', 'CONFIRMED', 'RELEASED', 'EXPIRED', 'NOT_FOUND', 'UNKNOWN'
+        probe_data = res_tuple[1]
+        is_expired = res_tuple[2]
+        is_uncertain = res_tuple[3]
+
+    # Phase C: Finalize with row locks (Order -> Checkout -> PaymentAttempt)
+    order = db.query(Order).filter(Order.order_id == order_id).with_for_update().first()
+    chk = db.query(Checkout).filter(Checkout.order_id == order_id).with_for_update().first()
+    attempt = db.query(PaymentAttempt).filter(PaymentAttempt.attempt_id == attempt_id).with_for_update().first()
+
+    if not attempt or attempt.status in ("SUCCEEDED", "FAILED", "EXPIRED"):
+        db.commit()
+        return attempt
+
+    now_ts = datetime.now(timezone.utc)
+    attempt.lease_worker_id = None
+    attempt.lease_expires_at = None
+
+    if simulated_outcome == "DECLINE":
+        attempt.status = "FAILED"
+        attempt.stage = "SIMULATED_DECLINE"
+        attempt.failure_code = "PAYMENT_DECLINED"
+        attempt.failure_reason = "Simulated payment declined by card issuer"
+        attempt.updated_at = now_ts
+        db.commit()
+        return attempt
+
+    if probe_status == "CONFIRMED":
+        attempt.status = "SUCCEEDED"
+        attempt.stage = "FINALIZED"
+        attempt.updated_at = now_ts
+        order.status = "Paid"
+        chk.status = "COMPLETED"
+        chk.updated_at = now_ts
+        existing_p = db.query(Payment).filter(Payment.order_id == order_id).first()
+        if not existing_p:
+            db.add(Payment(
+                order_id=order_id,
+                amount=amount,
+                method=method,
+                status="Completed",
+                payment_date=now_ts
+            ))
+        db.commit()
+        return attempt
+
+    elif probe_status == "EXPIRED":
+        attempt.status = "EXPIRED"
+        attempt.stage = "FINALIZED"
+        attempt.failure_code = "RESERVATION_EXPIRED"
+        attempt.failure_reason = "Reservation expired on inventory service"
+        attempt.updated_at = now_ts
+        order.status = "Cancelled"
+        chk.status = "FAILED"
+        chk.failure_code = "RESERVATION_EXPIRED"
+        chk.failure_reason = "Reservation expired on inventory service"
+        chk.updated_at = now_ts
+        db.commit()
+        return attempt
+
+    elif probe_status == "RELEASED":
+        attempt.status = "FAILED"
+        attempt.stage = "FINALIZED"
+        attempt.failure_code = "ALREADY_RELEASED"
+        attempt.failure_reason = "Reservation already released on inventory service"
+        attempt.updated_at = now_ts
+        order.status = "Cancelled"
+        chk.status = "CANCELLED"
+        chk.failure_code = "ALREADY_RELEASED"
+        chk.updated_at = now_ts
+        db.commit()
+        return attempt
+
+    elif probe_status == "ACTIVE":
+        res_exp = chk.reservation_expires_at
+        if is_expired or (res_exp and now_ts >= to_utc(res_exp)):
+            attempt.status = "EXPIRED"
+            attempt.stage = "FINALIZED"
+            attempt.failure_code = "RESERVATION_EXPIRED"
+            attempt.failure_reason = "Reservation expired before payment could complete"
+            attempt.updated_at = now_ts
+            chk.status = "COMPENSATION_REQUIRED"
+            chk.failure_code = "RESERVATION_EXPIRED"
+            chk.updated_at = now_ts
+            db.commit()
+
+            assert not db.in_transaction()
+            released = release_reservation_internal(reservation_op_id)
+
+            order = db.query(Order).filter(Order.order_id == order_id).with_for_update().first()
+            chk = db.query(Checkout).filter(Checkout.order_id == order_id).with_for_update().first()
+            if released:
+                order.status = "Cancelled"
+                chk.status = "FAILED"
+            db.commit()
+            return attempt
+
+        if simulated_outcome == "SUCCESS":
+            db.commit()
+            assert not db.in_transaction()
+            conf_status, conf_data, conf_fail_code, conf_fail_reason, is_ambiguous = confirm_reservation_internal(reservation_op_id)
+
+            order = db.query(Order).filter(Order.order_id == order_id).with_for_update().first()
+            chk = db.query(Checkout).filter(Checkout.order_id == order_id).with_for_update().first()
+            attempt = db.query(PaymentAttempt).filter(PaymentAttempt.attempt_id == attempt_id).with_for_update().first()
+
+            if conf_status == "CONFIRMED":
+                attempt.status = "SUCCEEDED"
+                attempt.stage = "FINALIZED"
+                attempt.updated_at = now_ts
+                order.status = "Paid"
+                chk.status = "COMPLETED"
+                chk.updated_at = now_ts
+                existing_p = db.query(Payment).filter(Payment.order_id == order_id).first()
+                if not existing_p:
+                    db.add(Payment(
+                        order_id=order_id,
+                        amount=amount,
+                        method=method,
+                        status="Completed",
+                        payment_date=now_ts
+                    ))
+                db.commit()
+                return attempt
+            elif conf_status == "EXPIRED":
+                attempt.status = "EXPIRED"
+                attempt.stage = "FINALIZED"
+                attempt.failure_code = "RESERVATION_EXPIRED"
+                attempt.updated_at = now_ts
+                order.status = "Cancelled"
+                chk.status = "FAILED"
+                chk.failure_code = "RESERVATION_EXPIRED"
+                db.commit()
+                return attempt
+            elif conf_status == "RELEASED":
+                attempt.status = "FAILED"
+                attempt.stage = "FINALIZED"
+                attempt.failure_code = "ALREADY_RELEASED"
+                attempt.updated_at = now_ts
+                order.status = "Cancelled"
+                chk.status = "CANCELLED"
+                db.commit()
+                return attempt
+            else:
+                attempt.status = "UNKNOWN"
+                attempt.failure_code = conf_fail_code or "CONFIRM_FAILED"
+                attempt.reconcile_attempts += 1
+                delay = min(300, 2 ** attempt.reconcile_attempts)
+                attempt.next_reconcile_at = now_ts + timedelta(seconds=delay)
+                attempt.lease_worker_id = None
+                attempt.lease_expires_at = None
+                attempt.updated_at = now_ts
+                db.commit()
+                return attempt
+        else:
+            attempt.status = "UNKNOWN"
+            attempt.stage = "CONFIRM_IN_FLIGHT"
+            attempt.failure_code = "SIMULATED_TIMEOUT"
+            attempt.failure_reason = "Simulated payment timeout; confirmation not sent"
+            attempt.reconcile_attempts += 1
+            delay = min(300, 2 ** attempt.reconcile_attempts)
+            attempt.next_reconcile_at = now_ts + timedelta(seconds=delay)
+            attempt.lease_worker_id = None
+            attempt.lease_expires_at = None
+            attempt.updated_at = now_ts
+            db.commit()
+            return attempt
+    else:
+        attempt.status = "UNKNOWN"
+        attempt.reconcile_attempts += 1
+        delay = min(300, 2 ** attempt.reconcile_attempts)
+        attempt.next_reconcile_at = now_ts + timedelta(seconds=delay)
+        attempt.lease_worker_id = None
+        attempt.lease_expires_at = None
+        attempt.updated_at = now_ts
+        db.commit()
+        return attempt
+
+@app.post("/orders/{order_id}/pay", response_model=PaymentResponse)
+def pay_order(
+    order_id: int,
+    request: Request,
+    response: Response,
+    payment_req: PaymentRequest,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+    user_id = int(user["sub"])
+    method = payment_req.method.strip()
+    simulated_outcome = (payment_req.simulated_outcome or "SUCCESS").upper().strip()
+
+    if method not in ("Credit Card", "PayPal", "Bank Transfer", "Gift Card"):
+        raise HTTPException(status_code=400, detail=f"Invalid payment method: {method}")
+
+    if simulated_outcome not in ("SUCCESS", "DECLINE", "TIMEOUT"):
+        raise HTTPException(status_code=400, detail=f"Invalid simulated_outcome: {simulated_outcome}")
+
+    if db.in_transaction():
+        db.commit()
+
+    order = db.query(Order).filter(Order.order_id == order_id).with_for_update().first()
+    if not order:
+        db.commit()
+        raise HTTPException(status_code=404, detail=f"Order {order_id} not found")
+
+    if order.user_id != user_id and user.get("role") != "admin":
+        db.commit()
+        raise HTTPException(status_code=403, detail="Forbidden: Not order owner")
+
+    chk = db.query(Checkout).filter(Checkout.order_id == order_id).with_for_update().first()
+    if not chk:
+        db.commit()
+        raise HTTPException(status_code=400, detail="Historical order without active checkout hold cannot be paid via simulated payment")
+
+    order_amount = order.total_amount
+    request_fingerprint = compute_payment_fingerprint(order_id, method, simulated_outcome, order_amount)
+
+    existing_attempt = db.query(PaymentAttempt).filter(
+        PaymentAttempt.order_id == order_id,
+        PaymentAttempt.idempotency_key == idempotency_key
+    ).with_for_update().first()
+
+    now_ts = datetime.now(timezone.utc)
+
+    if existing_attempt:
+        if existing_attempt.request_fingerprint != request_fingerprint:
+            db.commit()
+            raise HTTPException(status_code=409, detail="Idempotency-Key reused with conflicting payload options")
+
+        if existing_attempt.status == "SUCCEEDED":
+            db.commit()
+            return build_payment_response(existing_attempt)
+        elif existing_attempt.status == "FAILED":
+            db.commit()
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "Payment previously failed",
+                    "failure_code": existing_attempt.failure_code,
+                    "failure_reason": existing_attempt.failure_reason
+                }
+            )
+        elif existing_attempt.status == "EXPIRED":
+            db.commit()
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Payment reservation expired",
+                    "failure_code": existing_attempt.failure_code,
+                    "failure_reason": existing_attempt.failure_reason
+                }
+            )
+
+        attempt_id = existing_attempt.attempt_id
+        db.commit()
+        reconciled = reconcile_single_payment_attempt(attempt_id, db)
+        if reconciled and reconciled.status == "SUCCEEDED":
+            return build_payment_response(reconciled)
+        elif reconciled and reconciled.status == "FAILED":
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "Payment failed during resolution",
+                    "failure_code": reconciled.failure_code,
+                    "failure_reason": reconciled.failure_reason
+                }
+            )
+        elif reconciled and reconciled.status == "EXPIRED":
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Payment reservation expired",
+                    "failure_code": reconciled.failure_code,
+                    "failure_reason": reconciled.failure_reason
+                }
+            )
+        else:
+            raise HTTPException(status_code=503, detail="Payment attempt is currently resolving; please retry shortly")
+
+    if order.status == "Paid":
+        db.commit()
+        raise HTTPException(status_code=400, detail="Order is already paid")
+    if order.status == "Cancelled":
+        db.commit()
+        raise HTTPException(status_code=400, detail="Order is cancelled")
+    if order.status != "Pending":
+        db.commit()
+        raise HTTPException(status_code=400, detail=f"Cannot pay order in status: {order.status}")
+
+    unresolved_attempt = db.query(PaymentAttempt).filter(
+        PaymentAttempt.order_id == order_id,
+        PaymentAttempt.status.in_(IN_FLIGHT_PAYMENT_STATUSES)
+    ).first()
+
+    if unresolved_attempt:
+        unres_id = unresolved_attempt.attempt_id
+        db.commit()
+        rec = reconcile_single_payment_attempt(unres_id, db)
+        if rec and rec.status == "SUCCEEDED":
+            raise HTTPException(status_code=400, detail="Order was paid by another in-flight payment attempt")
+        if rec and rec.status == "UNKNOWN":
+            raise HTTPException(status_code=503, detail="Another payment attempt for this order is resolving; please retry shortly")
+        order = db.query(Order).filter(Order.order_id == order_id).with_for_update().first()
+        chk = db.query(Checkout).filter(Checkout.order_id == order_id).with_for_update().first()
+        if order.status != "Pending":
+            db.commit()
+            raise HTTPException(status_code=400, detail=f"Cannot pay order in status: {order.status}")
+
+    if chk.reservation_expires_at:
+        res_exp_utc = to_utc(chk.reservation_expires_at)
+        if now_ts >= res_exp_utc:
+            chk.status = "COMPENSATION_REQUIRED"
+            chk.failure_code = "RESERVATION_EXPIRED"
+            db.commit()
+            release_reservation_internal(chk.reservation_op_id)
+            order = db.query(Order).filter(Order.order_id == order_id).with_for_update().first()
+            chk = db.query(Checkout).filter(Checkout.order_id == order_id).with_for_update().first()
+            order.status = "Cancelled"
+            chk.status = "FAILED"
+            chk.failure_code = "RESERVATION_EXPIRED"
+            db.commit()
+            raise HTTPException(status_code=409, detail="Order reservation has expired")
+
+    attempt_op_id = f"pay_{uuid.uuid4().hex}"
+    new_attempt = PaymentAttempt(
+        order_id=order_id,
+        user_id=user_id,
+        operation_id=attempt_op_id,
+        idempotency_key=idempotency_key,
+        request_fingerprint=request_fingerprint,
+        amount=order_amount,
+        method=method,
+        simulated_outcome=simulated_outcome,
+        status="PROCESSING",
+        stage="INITIATED"
+    )
+    db.add(new_attempt)
+    db.flush()
+    created_attempt_id = new_attempt.attempt_id
+    reservation_op_id = chk.reservation_op_id
+    db.commit()
+
+    assert not db.in_transaction(), "Database transaction open before simulated payment processing"
+
+    if simulated_outcome == "DECLINE":
+        order = db.query(Order).filter(Order.order_id == order_id).with_for_update().first()
+        chk = db.query(Checkout).filter(Checkout.order_id == order_id).with_for_update().first()
+        att = db.query(PaymentAttempt).filter(PaymentAttempt.attempt_id == created_attempt_id).with_for_update().first()
+        att.status = "FAILED"
+        att.stage = "SIMULATED_DECLINE"
+        att.failure_code = "PAYMENT_DECLINED"
+        att.failure_reason = "Simulated payment declined by card issuer"
+        att.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "Payment declined",
+                "failure_code": "PAYMENT_DECLINED",
+                "failure_reason": "Simulated payment declined by card issuer"
+            }
+        )
+
+    elif simulated_outcome == "TIMEOUT":
+        order = db.query(Order).filter(Order.order_id == order_id).with_for_update().first()
+        chk = db.query(Checkout).filter(Checkout.order_id == order_id).with_for_update().first()
+        att = db.query(PaymentAttempt).filter(PaymentAttempt.attempt_id == created_attempt_id).with_for_update().first()
+        att.status = "UNKNOWN"
+        att.stage = "CONFIRM_IN_FLIGHT"
+        att.failure_code = "SIMULATED_TIMEOUT"
+        att.failure_reason = "Simulated payment gateway timeout"
+        att.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        raise HTTPException(
+            status_code=504,
+            detail={
+                "message": "Payment gateway timeout; status is unknown and will be reconciled",
+                "failure_code": "SIMULATED_TIMEOUT",
+                "failure_reason": "Simulated payment gateway timeout"
+            }
+        )
+
+    elif simulated_outcome == "SUCCESS":
+        att = db.query(PaymentAttempt).filter(PaymentAttempt.attempt_id == created_attempt_id).with_for_update().first()
+        att.stage = "CONFIRM_IN_FLIGHT"
+        db.commit()
+
+        assert not db.in_transaction()
+        conf_status, conf_data, conf_fail_code, conf_fail_reason, is_ambiguous = confirm_reservation_internal(reservation_op_id)
+
+        order = db.query(Order).filter(Order.order_id == order_id).with_for_update().first()
+        chk = db.query(Checkout).filter(Checkout.order_id == order_id).with_for_update().first()
+        att = db.query(PaymentAttempt).filter(PaymentAttempt.attempt_id == created_attempt_id).with_for_update().first()
+        now_fin = datetime.now(timezone.utc)
+
+        if conf_status == "CONFIRMED":
+            att.status = "SUCCEEDED"
+            att.stage = "FINALIZED"
+            att.updated_at = now_fin
+            order.status = "Paid"
+            chk.status = "COMPLETED"
+            chk.updated_at = now_fin
+            existing_p = db.query(Payment).filter(Payment.order_id == order_id).first()
+            if not existing_p:
+                db.add(Payment(
+                    order_id=order_id,
+                    amount=order_amount,
+                    method=method,
+                    status="Completed",
+                    payment_date=now_fin
+                ))
+            db.commit()
+            return build_payment_response(att)
+
+        elif conf_status == "EXPIRED":
+            att.status = "EXPIRED"
+            att.stage = "FINALIZED"
+            att.failure_code = "RESERVATION_EXPIRED"
+            att.failure_reason = "Reservation expired on inventory service"
+            att.updated_at = now_fin
+            order.status = "Cancelled"
+            chk.status = "FAILED"
+            chk.failure_code = "RESERVATION_EXPIRED"
+            chk.updated_at = now_fin
+            db.commit()
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Reservation expired; payment could not be confirmed",
+                    "failure_code": "RESERVATION_EXPIRED",
+                    "failure_reason": "Reservation expired on inventory service"
+                }
+            )
+
+        elif conf_status == "RELEASED":
+            att.status = "FAILED"
+            att.stage = "FINALIZED"
+            att.failure_code = "ALREADY_RELEASED"
+            att.failure_reason = "Reservation already released on inventory service"
+            att.updated_at = now_fin
+            order.status = "Cancelled"
+            chk.status = "CANCELLED"
+            chk.failure_code = "ALREADY_RELEASED"
+            chk.updated_at = now_fin
+            db.commit()
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Reservation already released; payment could not be confirmed",
+                    "failure_code": "ALREADY_RELEASED",
+                    "failure_reason": "Reservation already released on inventory service"
+                }
+            )
+
+        else:
+            att.status = "UNKNOWN"
+            att.failure_code = conf_fail_code or "CONFIRM_FAILED"
+            att.failure_reason = conf_fail_reason or "Confirmation outcome uncertain"
+            att.updated_at = now_fin
+            db.commit()
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "message": "Payment confirmation outcome uncertain; reconciliation in progress",
+                    "failure_code": att.failure_code,
+                    "failure_reason": att.failure_reason
+                }
+            )
+
+@app.post("/orders/{order_id}/cancel", response_model=CancelResponse)
+def cancel_order(
+    order_id: int,
+    request: Request,
+    cancel_req: Optional[CancelRequest] = None,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+    user_id = int(user["sub"])
+    reason = (cancel_req.reason if cancel_req and cancel_req.reason else "User requested cancellation").strip()
+    request_fingerprint = compute_cancellation_fingerprint(order_id, reason)
+
+    if db.in_transaction():
+        db.commit()
+
+    order = db.query(Order).filter(Order.order_id == order_id).with_for_update().first()
+    if not order:
+        db.commit()
+        raise HTTPException(status_code=404, detail=f"Order {order_id} not found")
+
+    if order.user_id != user_id and user.get("role") != "admin":
+        db.commit()
+        raise HTTPException(status_code=403, detail="Forbidden: Not order owner")
+
+    chk = db.query(Checkout).filter(Checkout.order_id == order_id).with_for_update().first()
+    if not chk:
+        db.commit()
+        raise HTTPException(status_code=400, detail="Cannot cancel historical order without checkout hold")
+
+    existing_canc = db.query(OrderCancellation).filter(
+        OrderCancellation.order_id == order_id
+    ).with_for_update().first()
+
+    if existing_canc:
+        if existing_canc.idempotency_key != idempotency_key or existing_canc.request_fingerprint != request_fingerprint:
+            db.commit()
+            raise HTTPException(status_code=409, detail="Order cancellation already initiated or conflicting cancellation payload")
+
+        if existing_canc.status == "SUCCEEDED":
+            db.commit()
+            return build_cancel_response(existing_canc)
+        elif existing_canc.status == "FAILED":
+            db.commit()
+            raise HTTPException(status_code=400, detail="Order cancellation previously failed")
+        elif existing_canc.status in ("PROCESSING", "UNKNOWN"):
+            pass
+
+    if order.status == "Paid":
+        db.commit()
+        raise HTTPException(status_code=400, detail="Cannot cancel an already paid order")
+
+    if order.status == "Cancelled":
+        if existing_canc and existing_canc.status == "SUCCEEDED":
+            db.commit()
+            return build_cancel_response(existing_canc)
+        if not existing_canc:
+            existing_canc = OrderCancellation(
+                order_id=order_id,
+                user_id=user_id,
+                operation_id=f"canc_{uuid.uuid4().hex}",
+                idempotency_key=idempotency_key,
+                request_fingerprint=request_fingerprint,
+                status="SUCCEEDED",
+                reason=reason
+            )
+            db.add(existing_canc)
+        else:
+            existing_canc.status = "SUCCEEDED"
+        db.commit()
+        return build_cancel_response(existing_canc)
+
+    if order.status != "Pending":
+        db.commit()
+        raise HTTPException(status_code=400, detail=f"Cannot cancel order in status: {order.status}")
+
+    unresolved_pa = db.query(PaymentAttempt).filter(
+        PaymentAttempt.order_id == order_id,
+        PaymentAttempt.status.in_(IN_FLIGHT_PAYMENT_STATUSES)
+    ).first()
+
+    if unresolved_pa:
+        pa_id = unresolved_pa.attempt_id
+        db.commit()
+        rec = reconcile_single_payment_attempt(pa_id, db)
+        if rec and rec.status == "SUCCEEDED":
+            raise HTTPException(status_code=400, detail="Cannot cancel order: payment was confirmed")
+        if rec and rec.status == "UNKNOWN":
+            raise HTTPException(
+                status_code=503,
+                detail="Payment confirmation is currently uncertain; cannot cancel until payment is reconciled"
+            )
+
+        order = db.query(Order).filter(Order.order_id == order_id).with_for_update().first()
+        chk = db.query(Checkout).filter(Checkout.order_id == order_id).with_for_update().first()
+        if order.status == "Paid":
+            db.commit()
+            raise HTTPException(status_code=400, detail="Cannot cancel an already paid order")
+        if order.status == "Cancelled":
+            db.commit()
+            canc = db.query(OrderCancellation).filter(OrderCancellation.order_id == order_id).first()
+            if not canc:
+                canc = OrderCancellation(
+                    order_id=order_id,
+                    user_id=user_id,
+                    operation_id=f"canc_{uuid.uuid4().hex}",
+                    idempotency_key=idempotency_key,
+                    request_fingerprint=request_fingerprint,
+                    status="SUCCEEDED",
+                    reason=reason
+                )
+                db.add(canc)
+            else:
+                canc.status = "SUCCEEDED"
+            db.commit()
+            return build_cancel_response(canc)
+
+    if not existing_canc:
+        existing_canc = OrderCancellation(
+            order_id=order_id,
+            user_id=user_id,
+            operation_id=f"canc_{uuid.uuid4().hex}",
+            idempotency_key=idempotency_key,
+            request_fingerprint=request_fingerprint,
+            status="PROCESSING",
+            reason=reason
+        )
+        db.add(existing_canc)
+    else:
+        existing_canc.status = "PROCESSING"
+        existing_canc.reason = reason
+
+    reservation_op_id = chk.reservation_op_id
+    db.commit()
+
+    assert not db.in_transaction()
+    released = release_reservation_internal(reservation_op_id)
+
+    order = db.query(Order).filter(Order.order_id == order_id).with_for_update().first()
+    chk = db.query(Checkout).filter(Checkout.order_id == order_id).with_for_update().first()
+    canc = db.query(OrderCancellation).filter(OrderCancellation.order_id == order_id).with_for_update().first()
+    now_ts = datetime.now(timezone.utc)
+
+    if released:
+        order.status = "Cancelled"
+        chk.status = "CANCELLED"
+        chk.updated_at = now_ts
+        canc.status = "SUCCEEDED"
+        canc.updated_at = now_ts
+        db.commit()
+        return build_cancel_response(canc)
+    else:
+        probe_tuple = get_reservation_internal(reservation_op_id)
+        if probe_tuple[0] == "CONFIRMED":
+            order.status = "Paid"
+            chk.status = "COMPLETED"
+            canc.status = "FAILED"
+            db.commit()
+            raise HTTPException(status_code=400, detail="Cannot cancel order: inventory reservation is already confirmed")
+        
+        chk.status = "COMPENSATION_REQUIRED"
+        canc.status = "UNKNOWN"
+        db.commit()
+        raise HTTPException(
+            status_code=503,
+            detail="Order cancellation release pending verification; please retry shortly"
+        )
+
+@app.get("/orders/{order_id}/payment-status", response_model=PaymentStatusResponse)
+def get_order_payment_status(
+    order_id: int,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+    user_id = int(user["sub"])
+    order = db.query(Order).filter(Order.order_id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail=f"Order {order_id} not found")
+
+    if order.user_id != user_id and user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden: Not order owner")
+
+    chk = db.query(Checkout).filter(Checkout.order_id == order_id).first()
+    now_ts = datetime.now(timezone.utc)
+
+    res_exp = to_utc(chk.reservation_expires_at) if (chk and chk.reservation_expires_at) else None
+    is_expired = bool(res_exp and now_ts >= res_exp)
+
+    attempts = db.query(PaymentAttempt).filter(
+        PaymentAttempt.order_id == order_id
+    ).order_by(PaymentAttempt.attempt_id.asc()).all()
+
+    has_in_flight = any(a.status in IN_FLIGHT_PAYMENT_STATUSES for a in attempts)
+    can_pay = (order.status == "Pending" and not is_expired and not has_in_flight)
+    can_cancel = (order.status == "Pending")
+
+    payment_record = None
+    if order.payment:
+        payment_record = {
+            "payment_id": order.payment.payment_id,
+            "order_id": order.payment.order_id,
+            "amount": float(order.payment.amount),
+            "method": order.payment.method,
+            "status": order.payment.status,
+            "payment_date": order.payment.payment_date.isoformat() if order.payment.payment_date else None
+        }
+
+    attempts_summary = [
+        PaymentAttemptSummary(
+            attempt_id=a.attempt_id,
+            operation_id=a.operation_id,
+            method=a.method,
+            amount=a.amount,
+            simulated_outcome=a.simulated_outcome,
+            status=a.status,
+            stage=a.stage,
+            failure_code=a.failure_code,
+            failure_reason=a.failure_reason,
+            created_at=a.created_at
+        )
+        for a in attempts
+    ]
+
+    return PaymentStatusResponse(
+        order_id=order.order_id,
+        order_status=order.status,
+        total_amount=order.total_amount,
+        reservation_expires_at=res_exp,
+        is_expired=is_expired,
+        can_pay=can_pay,
+        can_cancel=can_cancel,
+        payment=payment_record,
+        payment_attempts=attempts_summary
+    )
+
+def reconcile_all_pending_operations(db: Session, worker_id: str = "worker-1") -> dict:
+    """
+    Autonomous recovery engine:
+    1. Reconciles payment attempts in PROCESSING or UNKNOWN using lease.
+    2. Sweeps expired checkouts in RESERVED with Pending orders.
+    3. Reconciles Stage 2C checkouts in UNKNOWN, RESERVING, COMPENSATION_REQUIRED.
+    """
+    now = datetime.now(timezone.utc)
+    lease_until = now + timedelta(seconds=30)
+    stats = {
+        "payment_attempts_reconciled": 0,
+        "expired_checkouts_reconciled": 0,
+        "stage2c_checkouts_reconciled": 0
+    }
+
+    # Step 1: Claim and reconcile payment attempts
+    while True:
+        if db.in_transaction():
+            db.commit()
+
+        claimed_attempt = db.query(PaymentAttempt).filter(
+            PaymentAttempt.status.in_(IN_FLIGHT_PAYMENT_STATUSES),
+            (PaymentAttempt.lease_worker_id.is_(None) | (PaymentAttempt.lease_expires_at < now)),
+            (PaymentAttempt.next_reconcile_at.is_(None) | (PaymentAttempt.next_reconcile_at <= now))
+        ).with_for_update(skip_locked=True).first()
+
+        if not claimed_attempt:
+            db.commit()
+            break
+
+        claimed_attempt.lease_worker_id = worker_id
+        claimed_attempt.lease_expires_at = lease_until
+        att_id = claimed_attempt.attempt_id
+        db.commit()
+
+        try:
+            reconcile_single_payment_attempt(att_id, db)
+            stats["payment_attempts_reconciled"] += 1
+        except Exception as e:
+            logger.error(f"Error reconciling payment attempt {att_id}: {e}")
+
+    # Step 2: Claim and sweep expired RESERVED checkouts with Pending orders
+    while True:
+        if db.in_transaction():
+            db.commit()
+
+        claimed_chk = db.query(Checkout).join(Order, Checkout.order_id == Order.order_id).filter(
+            Checkout.status == "RESERVED",
+            Order.status == "Pending",
+            Checkout.reservation_expires_at <= now,
+            (Checkout.lease_worker_id.is_(None) | (Checkout.lease_expires_at < now)),
+            (Checkout.next_reconcile_at.is_(None) | (Checkout.next_reconcile_at <= now))
+        ).with_for_update(skip_locked=True).first()
+
+        if not claimed_chk:
+            db.commit()
+            break
+
+        claimed_chk.lease_worker_id = worker_id
+        claimed_chk.lease_expires_at = lease_until
+        chk_id = claimed_chk.checkout_id
+        res_op_id = claimed_chk.reservation_op_id
+        ord_id = claimed_chk.order_id
+        db.commit()
+
+        try:
+            unresolved_pa = db.query(PaymentAttempt).filter(
+                PaymentAttempt.order_id == ord_id,
+                PaymentAttempt.status.in_(IN_FLIGHT_PAYMENT_STATUSES)
+            ).first()
+
+            if unresolved_pa:
+                pa_id = unresolved_pa.attempt_id
+                rec = reconcile_single_payment_attempt(pa_id, db)
+                if rec and rec.status == "SUCCEEDED":
+                    continue
+                if rec and rec.status == "UNKNOWN":
+                    chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).with_for_update().first()
+                    if chk:
+                        chk.lease_worker_id = None
+                        chk.lease_expires_at = None
+                        chk.reconcile_attempts += 1
+                        chk.next_reconcile_at = now + timedelta(seconds=min(300, 2 ** chk.reconcile_attempts))
+                    db.commit()
+                    continue
+
+            if db.in_transaction():
+                db.commit()
+            assert not db.in_transaction()
+            released = release_reservation_internal(res_op_id)
+
+            order = db.query(Order).filter(Order.order_id == ord_id).with_for_update().first()
+            chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).with_for_update().first()
+            now_fin = datetime.now(timezone.utc)
+            if chk:
+                chk.lease_worker_id = None
+                chk.lease_expires_at = None
+                chk.updated_at = now_fin
+
+            if released:
+                if order:
+                    order.status = "Cancelled"
+                if chk:
+                    chk.status = "FAILED"
+                    chk.failure_code = "RESERVATION_EXPIRED"
+                    chk.failure_reason = "Inventory reservation expired before payment"
+            else:
+                if chk:
+                    chk.status = "COMPENSATION_REQUIRED"
+                    chk.failure_code = "RESERVATION_EXPIRED"
+                    chk.reconcile_attempts += 1
+                    chk.next_reconcile_at = now_fin + timedelta(seconds=min(300, 2 ** chk.reconcile_attempts))
+            db.commit()
+            stats["expired_checkouts_reconciled"] += 1
+        except Exception as e:
+            logger.error(f"Error sweeping expired checkout {chk_id}: {e}")
+
+    # Step 3: Claim and reconcile Stage 2C checkouts in UNKNOWN, RESERVING, COMPENSATION_REQUIRED
+    while True:
+        if db.in_transaction():
+            db.commit()
+
+        claimed_chk = db.query(Checkout).filter(
+            Checkout.status.in_(("UNKNOWN", "RESERVING", "COMPENSATION_REQUIRED")),
+            (Checkout.lease_worker_id.is_(None) | (Checkout.lease_expires_at < now)),
+            (Checkout.next_reconcile_at.is_(None) | (Checkout.next_reconcile_at <= now))
+        ).with_for_update(skip_locked=True).first()
+
+        if not claimed_chk:
+            db.commit()
+            break
+
+        claimed_chk.lease_worker_id = worker_id
+        claimed_chk.lease_expires_at = lease_until
+        chk_id = claimed_chk.checkout_id
+        db.commit()
+
+        try:
+            reconcile_and_recover_checkout(chk_id, db=db)
+            chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).with_for_update().first()
+            if chk:
+                chk.lease_worker_id = None
+                chk.lease_expires_at = None
+                chk.reconcile_attempts += 1
+                chk.next_reconcile_at = datetime.now(timezone.utc) + timedelta(seconds=min(300, 2 ** chk.reconcile_attempts))
+            db.commit()
+            stats["stage2c_checkouts_reconciled"] += 1
+        except Exception as e:
+            logger.error(f"Error recovering Stage 2C checkout {chk_id}: {e}")
+
+    return stats
+
+@app.post("/internal/reconcile-all", dependencies=[Depends(require_internal)])
+def trigger_full_reconcile(db: Session = Depends(get_db)):
+    worker_id = f"manual_{uuid.uuid4().hex[:8]}"
+    stats = reconcile_all_pending_operations(db, worker_id=worker_id)
+    return {"status": "ok", "stats": stats}
+
+background_task = None
+
+@app.on_event("startup")
+async def startup_event():
+    global background_task
+    if os.getenv("ENABLE_BACKGROUND_WORKER", "true").lower() in ("true", "1") and os.getenv("TEST_ENV") != "true":
+        background_task = asyncio.create_task(background_recovery_loop())
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    global background_task
+    if background_task:
+        background_task.cancel()
+        try:
+            await background_task
+        except asyncio.CancelledError:
+            pass
+
+async def background_recovery_loop():
+    worker_id = f"bg_{uuid.uuid4().hex[:8]}"
+    logger.info(f"Starting background recovery loop with worker_id={worker_id}")
+    while True:
+        try:
+            await asyncio.sleep(5)
+            await asyncio.to_thread(run_worker_pass, worker_id)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.warning(f"Background recovery loop error: {e}")
+
+def run_worker_pass(worker_id: str):
+    db = SessionLocal()
+    try:
+        reconcile_all_pending_operations(db, worker_id=worker_id)
+    finally:
+        db.close()
 
 # Cart Routes with Lock Discipline
 @app.get("/cart", response_model=CartResponse)

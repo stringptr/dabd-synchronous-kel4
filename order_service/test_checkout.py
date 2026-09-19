@@ -35,6 +35,13 @@ def sync_sequences():
 
 def cleanup_user_data(user_id: int):
     with engine.begin() as conn:
+        conn.execute(text("DELETE FROM order_cancellations WHERE user_id = :uid"), {"uid": user_id})
+        conn.execute(text("DELETE FROM payment_attempts WHERE user_id = :uid"), {"uid": user_id})
+        conn.execute(text("""
+            DELETE FROM payments WHERE order_id IN (
+                SELECT order_id FROM orders WHERE user_id = :uid
+            )
+        """), {"uid": user_id})
         conn.execute(text("DELETE FROM checkouts WHERE user_id = :uid"), {"uid": user_id})
         conn.execute(text("""
             DELETE FROM order_items WHERE order_id IN (
