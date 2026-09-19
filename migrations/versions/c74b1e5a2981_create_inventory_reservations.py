@@ -101,7 +101,50 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Downgrade schema - remove reservation tables and reserved_quantity."""
+    """Downgrade schema - remove reservation tables and reserved_quantity if safe.
+    
+    Fail-closed preconditions:
+    - Rejects downgrade if any stock_reservations record exists (prevents audit loss).
+    - Rejects downgrade if any stock_reservation_items record exists.
+    - Rejects downgrade if any inventory record has non-zero reserved_quantity.
+    """
+    bind = op.get_bind()
+
+    # Precondition 1: Reject if any reservation history exists in stock_reservations
+    has_reservations = bind.execute(
+        sa.text("SELECT COUNT(*) FROM stock_reservations")
+    ).scalar()
+    if has_reservations and has_reservations > 0:
+        raise RuntimeError(
+            f"Precondition failed: Cannot downgrade migration c74b1e5a2981 because {has_reservations} "
+            "reservation record(s) exist in stock_reservations. Downgrading would permanently destroy "
+            "reservation history. Data preservation policy prohibits dropping tables containing data. "
+            "Downgrade is aborted to protect data integrity."
+        )
+
+    # Precondition 2: Reject if any reservation items exist
+    has_items = bind.execute(
+        sa.text("SELECT COUNT(*) FROM stock_reservation_items")
+    ).scalar()
+    if has_items and has_items > 0:
+        raise RuntimeError(
+            f"Precondition failed: Cannot downgrade migration c74b1e5a2981 because {has_items} "
+            "reservation item(s) exist in stock_reservation_items. Downgrading would permanently destroy "
+            "reservation item history. Downgrade is aborted to protect data integrity."
+        )
+
+    # Precondition 3: Reject if any inventory record has non-zero reserved_quantity
+    has_nonzero_reserved = bind.execute(
+        sa.text("SELECT COUNT(*) FROM inventory WHERE reserved_quantity > 0")
+    ).scalar()
+    if has_nonzero_reserved and has_nonzero_reserved > 0:
+        raise RuntimeError(
+            f"Precondition failed: Cannot downgrade migration c74b1e5a2981 because {has_nonzero_reserved} "
+            "inventory record(s) have non-zero reserved_quantity. Downgrading would drop the reserved_quantity "
+            "column and silently lose active inventory holds. Downgrade is aborted to protect data integrity."
+        )
+
+    # All preconditions passed: safe to remove tables and column
     op.drop_index('ix_reservation_items_inventory', table_name='stock_reservation_items')
     op.drop_index('ix_reservation_items_reservation_id', table_name='stock_reservation_items')
     op.drop_table('stock_reservation_items')
@@ -113,3 +156,4 @@ def downgrade() -> None:
     op.drop_constraint('chk_inventory_reserved_le_on_hand', 'inventory', type_='check')
     op.drop_constraint('chk_inventory_reserved_non_negative', 'inventory', type_='check')
     op.drop_column('inventory', 'reserved_quantity')
+

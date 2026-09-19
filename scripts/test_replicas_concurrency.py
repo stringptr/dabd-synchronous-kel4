@@ -42,7 +42,7 @@ def run_cmd(cmd, check=True, capture=True, env=None):
     if env:
         merged_env.update(env)
     print(f"--> Running: {' '.join(cmd)}")
-    res = subprocess.run(cmd, check=check, text=True, capture_output=capture, env=merged_env)
+    res = subprocess.run(cmd, check=check, text=True, capture_output=capture, env=merged_env, encoding="utf-8", errors="replace")
     return res
 
 def wait_for_postgres(timeout=30):
@@ -180,8 +180,8 @@ def test_1_identical_operation_id_race_single_stock():
     print(f"Replica 1 Response: HTTP {r1.status_code}, Body: {r1.json()}")
     print(f"Replica 2 Response: HTTP {r2.status_code}, Body: {r2.json()}")
 
-    assert r1.status_code in (200, 201), f"Unexpected status {r1.status_code} on replica 1"
-    assert r2.status_code in (200, 201), f"Unexpected status {r2.status_code} on replica 2"
+    statuses = [r1.status_code, r2.status_code]
+    assert sorted(statuses) == [200, 201], f"Expected exactly one 201 Created and one 200 OK replay, got {statuses}"
 
     d1, d2 = r1.json(), r2.json()
     assert d1["reservation_id"] == d2["reservation_id"], "Reservation IDs must be identical"
@@ -239,7 +239,8 @@ def test_2_identical_operation_id_race_abundant_stock():
     print(f"Replica 1 Response: HTTP {r1.status_code}, Body: {r1.json()}")
     print(f"Replica 2 Response: HTTP {r2.status_code}, Body: {r2.json()}")
 
-    assert r1.status_code in (200, 201) and r2.status_code in (200, 201)
+    statuses = [r1.status_code, r2.status_code]
+    assert sorted(statuses) == [200, 201], f"Expected exactly one 201 Created and one 200 OK replay, got {statuses}"
     d1, d2 = r1.json(), r2.json()
     assert d1["reservation_id"] == d2["reservation_id"]
 

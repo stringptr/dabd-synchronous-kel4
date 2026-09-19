@@ -141,8 +141,58 @@ def main():
         assert "failure_reason" not in cols, "failure_reason should be dropped after downgrade"
     conn.close()
 
-    # 6. Downgrade further to Stage 2A (3b98a300aa73)
-    print("\n[Step 5] Downgrading to Stage 2A baseline 3b98a300aa73...")
+    # 6. Test Safe Preconditions on c74b1e5a2981 (Reject downgrade if data exists)
+    print("\n[Step 5A] Testing c74b1e5a2981 Precondition: Reject downgrade if reservations exist...")
+    conn = get_conn()
+    with conn.cursor() as cur:
+        cur.execute("""
+            INSERT INTO stock_reservations (operation_id, request_fingerprint, status, expires_at)
+            VALUES ('test-c74b-safeguard-op', 'fakehash', 'ACTIVE', clock_timestamp());
+        """)
+        conn.commit()
+    conn.close()
+
+    res = run_cmd(["alembic", "downgrade", "3b98a300aa73"], env=alembic_env, check=False)
+    print(f"Downgrade with reservations returncode: {res.returncode}")
+    print(f"Downgrade stderr snippet:\n{res.stderr[-300:]}")
+    assert res.returncode != 0, "Downgrade MUST fail when stock_reservations contains records"
+    assert "Precondition failed" in res.stderr and "stock_reservations" in res.stderr
+    print("PASSED: c74b1e5a2981 safeguard successfully blocked destructive downgrade with active reservations!")
+
+    # Verify reservation remained intact
+    conn = get_conn()
+    with conn.cursor() as cur:
+        cur.execute("SELECT status FROM stock_reservations WHERE operation_id = 'test-c74b-safeguard-op';")
+        assert cur.fetchone()["status"] == "ACTIVE"
+        # Clean up test row
+        cur.execute("DELETE FROM stock_reservations WHERE operation_id = 'test-c74b-safeguard-op';")
+        conn.commit()
+    conn.close()
+
+    print("\n[Step 5B] Testing c74b1e5a2981 Precondition: Reject downgrade if reserved_quantity > 0...")
+    conn = get_conn()
+    with conn.cursor() as cur:
+        # Set product 1 reserved_quantity to 5 (assuming quantity_on_hand >= 5)
+        cur.execute("UPDATE inventory SET quantity_on_hand = 10, reserved_quantity = 5 WHERE product_id = 1;")
+        conn.commit()
+    conn.close()
+
+    res = run_cmd(["alembic", "downgrade", "3b98a300aa73"], env=alembic_env, check=False)
+    print(f"Downgrade with reserved_quantity returncode: {res.returncode}")
+    print(f"Downgrade stderr snippet:\n{res.stderr[-300:]}")
+    assert res.returncode != 0, "Downgrade MUST fail when inventory has reserved_quantity > 0"
+    assert "Precondition failed" in res.stderr and "reserved_quantity" in res.stderr
+    print("PASSED: c74b1e5a2981 safeguard successfully blocked destructive downgrade with nonzero reserved_quantity!")
+
+    # Reset inventory
+    conn = get_conn()
+    with conn.cursor() as cur:
+        cur.execute("UPDATE inventory SET reserved_quantity = 0 WHERE product_id = 1;")
+        conn.commit()
+    conn.close()
+
+    # 7. Clean Downgrade to Stage 2A (3b98a300aa73)
+    print("\n[Step 5C] Clean Downgrading to Stage 2A baseline 3b98a300aa73 on empty tables...")
     res = run_cmd(["alembic", "downgrade", "3b98a300aa73"], env=alembic_env)
     assert res.returncode == 0
     print("Downgraded to 3b98a300aa73 successfully!")

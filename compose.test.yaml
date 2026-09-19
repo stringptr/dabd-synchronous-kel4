@@ -38,7 +38,11 @@ services:
     ports:
       - "127.0.0.1:8001:8000"
     networks:
-      - stage2b-test-net
+      stage2b-test-net:
+        aliases:
+          - product-service-1
+          - order-service
+          - frontend
     depends_on:
       test-postgres:
         condition: service_healthy
@@ -64,7 +68,9 @@ services:
     ports:
       - "127.0.0.1:8002:8000"
     networks:
-      - stage2b-test-net
+      stage2b-test-net:
+        aliases:
+          - product-service-2
     depends_on:
       test-postgres:
         condition: service_healthy
@@ -74,9 +80,55 @@ services:
       timeout: 3s
       retries: 10
 
+  test-auth:
+    build:
+      context: ./auth_service
+    image: test-auth-service:stage2b
+    container_name: stage2b-test-auth
+    environment:
+      - DB_HOST=test-postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=testpassword
+      - DB_NAME=test_db
+      - DB_PORT=5432
+      - JWT_SECRET=testjwtsecretfortestingonly_32char!
+      - INTERNAL_API_KEY=testinternal
+    ports:
+      - "127.0.0.1:8003:8000"
+    networks:
+      stage2b-test-net:
+        aliases:
+          - auth-service
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  test-nginx:
+    image: docker.io/nginx:1.31.4-alpine3.24
+    container_name: stage2b-test-nginx
+    ports:
+      - "127.0.0.1:8082:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - stage2b-test-net
+    depends_on:
+      test-auth:
+        condition: service_healthy
+      test-product-1:
+        condition: service_healthy
+      test-product-2:
+        condition: service_healthy
+
 networks:
   stage2b-test-net:
     driver: bridge
 
 volumes:
   test_postgres_data:
+
