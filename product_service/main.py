@@ -1,13 +1,19 @@
 import os
 import uuid
+import json
+import hashlib
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, List
 
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, Header
 from pydantic import BaseModel, Field
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, text, Numeric, Table
+from sqlalchemy import (
+    create_engine, Column, Integer, String, Float, DateTime, ForeignKey,
+    text, Numeric, Table, CheckConstraint, ForeignKeyConstraint, UniqueConstraint, func
+)
 from sqlalchemy.orm import sessionmaker, declarative_base, Session, relationship
+from sqlalchemy.exc import IntegrityError
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -24,6 +30,8 @@ SQLALCHEMY_DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HO
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
+DEFAULT_RESERVATION_TIMEOUT_MINUTES = int(os.getenv("RESERVATION_EXPIRATION_MINUTES", "15"))
 
 categories = Table("categories", Base.metadata, Column("category_id", Integer, primary_key=True))
 suppliers = Table("suppliers", Base.metadata, Column("supplier_id", Integer, primary_key=True))
@@ -47,9 +55,55 @@ class Inventory(Base):
     product_id = Column(Integer, ForeignKey("products.product_id", ondelete="CASCADE"), primary_key=True)
     warehouse_id = Column(Integer, ForeignKey("warehouses.warehouse_id", ondelete="CASCADE"), primary_key=True)
     quantity_on_hand = Column(Integer, nullable=False, default=0)
+    reserved_quantity = Column(Integer, nullable=False, default=0)
     reorder_level = Column(Integer, server_default=text("10"))
     
+    __table_args__ = (
+        CheckConstraint("reserved_quantity >= 0", name="chk_inventory_reserved_non_negative"),
+        CheckConstraint("reserved_quantity <= quantity_on_hand", name="chk_inventory_reserved_le_on_hand"),
+        CheckConstraint("quantity_on_hand >= 0", name="chk_inventory_quantity_on_hand_non_negative"),
+    )
+
     product = relationship("Product", back_populates="inventory")
+    reservation_items = relationship("StockReservationItem", back_populates="inventory")
+
+class StockReservation(Base):
+    __tablename__ = "stock_reservations"
+    reservation_id = Column(Integer, primary_key=True, autoincrement=True)
+    operation_id = Column(String(100), unique=True, nullable=False)
+    request_fingerprint = Column(String(64), nullable=False)
+    status = Column(String(20), nullable=False) # ACTIVE, CONFIRMED, RELEASED, EXPIRED
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"), nullable=False)
+    updated_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"), onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("status IN ('ACTIVE', 'CONFIRMED', 'RELEASED', 'EXPIRED')", name="chk_stock_reservations_status"),
+    )
+
+    items = relationship("StockReservationItem", back_populates="reservation", cascade="all, delete-orphan")
+
+class StockReservationItem(Base):
+    __tablename__ = "stock_reservation_items"
+    reservation_item_id = Column(Integer, primary_key=True, autoincrement=True)
+    reservation_id = Column(Integer, ForeignKey("stock_reservations.reservation_id", ondelete="CASCADE"), nullable=False)
+    product_id = Column(Integer, nullable=False)
+    warehouse_id = Column(Integer, nullable=False)
+    quantity = Column(Integer, nullable=False)
+    created_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"), nullable=False)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["product_id", "warehouse_id"],
+            ["inventory.product_id", "inventory.warehouse_id"],
+            ondelete="RESTRICT",
+            name="fk_reservation_items_inventory"
+        ),
+        CheckConstraint("quantity > 0", name="chk_reservation_item_quantity_positive"),
+    )
+
+    reservation = relationship("StockReservation", back_populates="items")
+    inventory = relationship("Inventory", back_populates="reservation_items")
 
 def get_db():
     db = SessionLocal()
@@ -95,13 +149,29 @@ class ProductResponse(BaseModel):
     supplier_id: Optional[int] = None
     total_stock: int
 
-class ReservationItem(BaseModel):
+# Stage 2B Reservation Schemas
+class ReservationItemIn(BaseModel):
     product_id: int
     quantity: int = Field(..., gt=0)
 
-class ReservationRequest(BaseModel):
-    cart_id: int
-    items: List[ReservationItem]
+class ReservationCreateRequest(BaseModel):
+    operation_id: str = Field(..., min_length=1, max_length=100)
+    items: List[ReservationItemIn] = Field(..., min_length=1)
+
+class ReservationItemOut(BaseModel):
+    reservation_item_id: int
+    product_id: int
+    warehouse_id: int
+    quantity: int
+
+class ReservationResponse(BaseModel):
+    reservation_id: int
+    operation_id: str
+    status: str
+    expires_at: datetime
+    created_at: datetime
+    updated_at: datetime
+    items: List[ReservationItemOut]
 
 # Internal security
 INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY")
@@ -122,13 +192,60 @@ def require_admin(x_user_role: Optional[str] = Header(None)):
         raise HTTPException(status_code=403, detail="Forbidden: Admin access required")
     return True
 
-# Routes
+def normalize_datetime(dt: Optional[datetime]) -> Optional[datetime]:
+    if dt is not None and dt.tzinfo is not None:
+        return dt.replace(tzinfo=None)
+    return dt
+
+def get_db_time(db: Session) -> datetime:
+    ts = db.execute(text("SELECT CURRENT_TIMESTAMP")).scalar()
+    if not isinstance(ts, datetime):
+        ts = datetime.utcnow()
+    return normalize_datetime(ts)
+
+def compute_request_fingerprint(items: List[ReservationItemIn]) -> str:
+    # Sort by product_id ascending to generate canonical JSON
+    sorted_items = sorted(items, key=lambda x: x.product_id)
+    canonical = [{"product_id": x.product_id, "quantity": x.quantity} for x in sorted_items]
+    canonical_str = json.dumps(canonical, separators=(",", ":"))
+    return hashlib.sha256(canonical_str.encode("utf-8")).hexdigest()
+
+def get_available_stock(inv: Inventory) -> int:
+    avail = inv.quantity_on_hand - getattr(inv, "reserved_quantity", 0)
+    if avail < 0 or getattr(inv, "reserved_quantity", 0) < 0 or inv.quantity_on_hand < 0:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Data integrity violation: invalid stock state on product {inv.product_id}, warehouse {inv.warehouse_id}"
+        )
+    return avail
+
+def build_reservation_response(res: StockReservation) -> ReservationResponse:
+    items_out = [
+        ReservationItemOut(
+            reservation_item_id=item.reservation_item_id,
+            product_id=item.product_id,
+            warehouse_id=item.warehouse_id,
+            quantity=item.quantity
+        )
+        for item in res.items
+    ]
+    return ReservationResponse(
+        reservation_id=res.reservation_id,
+        operation_id=res.operation_id,
+        status=res.status,
+        expires_at=res.expires_at,
+        created_at=res.created_at,
+        updated_at=res.updated_at,
+        items=items_out
+    )
+
+# Public Routes
 @app.get("/products", response_model=List[ProductResponse])
 def get_products(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     products = db.query(Product).offset(skip).limit(limit).all()
     res = []
     for p in products:
-        total_stock = sum(inv.quantity_on_hand for inv in p.inventory) if p.inventory else 0
+        total_stock = sum(get_available_stock(inv) for inv in p.inventory) if p.inventory else 0
         res.append({
             "product_id": p.product_id,
             "name": p.name,
@@ -145,7 +262,7 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
     p = db.query(Product).filter(Product.product_id == product_id).first()
     if not p:
         raise HTTPException(status_code=404, detail="Product not found")
-    total_stock = sum(inv.quantity_on_hand for inv in p.inventory) if p.inventory else 0
+    total_stock = sum(get_available_stock(inv) for inv in p.inventory) if p.inventory else 0
     return {
         "product_id": p.product_id,
         "name": p.name,
@@ -181,6 +298,196 @@ def create_product(
         "supplier_id": new_product.supplier_id,
         "total_stock": 0
     }
+
+# Internal Reservation Endpoints
+@app.post("/internal/reservations", response_model=ReservationResponse, status_code=201, dependencies=[Depends(require_internal)])
+def create_reservation(req: ReservationCreateRequest, response: Response, db: Session = Depends(get_db)):
+    # 1. Reject duplicate product_ids in a single request
+    pids = [item.product_id for item in req.items]
+    if len(pids) != len(set(pids)):
+        raise HTTPException(status_code=422, detail="Duplicate product_id in reservation request is not allowed")
+
+    fingerprint = compute_request_fingerprint(req.items)
+
+    # 2. Check if operation_id already exists (idempotency check)
+    existing = db.query(StockReservation).filter(StockReservation.operation_id == req.operation_id).first()
+    if existing:
+        if existing.request_fingerprint == fingerprint:
+            response.status_code = status.HTTP_200_OK
+            return build_reservation_response(existing)
+        else:
+            raise HTTPException(status_code=409, detail="Operation ID reused with conflicting payload")
+
+    sorted_pids = sorted(pids)
+
+    # 3. Verify all requested products exist
+    existing_pids = set(p[0] for p in db.query(Product.product_id).filter(Product.product_id.in_(sorted_pids)).all())
+    missing_pids = set(sorted_pids) - existing_pids
+    if missing_pids:
+        raise HTTPException(status_code=404, detail=f"Products not found: {list(missing_pids)}")
+
+    # 4. Acquire row-level locks on all relevant inventory rows in deterministic global order
+    inv_rows = db.query(Inventory).filter(
+        Inventory.product_id.in_(sorted_pids)
+    ).order_by(Inventory.product_id.asc(), Inventory.warehouse_id.asc()).with_for_update().all()
+
+    inv_by_product = {}
+    for inv in inv_rows:
+        inv_by_product.setdefault(inv.product_id, []).append(inv)
+
+    # 5. Check all-or-nothing stock availability across warehouses
+    allocations = []
+    for item in req.items:
+        product_inv = inv_by_product.get(item.product_id, [])
+        total_avail = sum(get_available_stock(inv) for inv in product_inv)
+        if total_avail < item.quantity:
+            db.rollback()
+            raise HTTPException(
+                status_code=409,
+                detail=f"Insufficient stock for product {item.product_id}: requested {item.quantity}, available {total_avail}"
+            )
+        needed = item.quantity
+        for inv in product_inv:
+            avail = get_available_stock(inv)
+            if avail > 0:
+                alloc = min(needed, avail)
+                allocations.append((inv, alloc))
+                needed -= alloc
+                if needed == 0:
+                    break
+
+    # 6. Apply reservation increments
+    now_ts = get_db_time(db)
+    expires_at = now_ts + timedelta(minutes=DEFAULT_RESERVATION_TIMEOUT_MINUTES)
+
+    reservation = StockReservation(
+        operation_id=req.operation_id,
+        request_fingerprint=fingerprint,
+        status="ACTIVE",
+        expires_at=expires_at,
+        created_at=now_ts,
+        updated_at=now_ts
+    )
+    db.add(reservation)
+    db.flush()
+
+    for inv, alloc in allocations:
+        inv.reserved_quantity += alloc
+        res_item = StockReservationItem(
+            reservation_id=reservation.reservation_id,
+            product_id=inv.product_id,
+            warehouse_id=inv.warehouse_id,
+            quantity=alloc,
+            created_at=now_ts
+        )
+        db.add(res_item)
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        existing = db.query(StockReservation).filter(StockReservation.operation_id == req.operation_id).first()
+        if existing:
+            if existing.request_fingerprint == fingerprint:
+                response.status_code = status.HTTP_200_OK
+                return build_reservation_response(existing)
+            else:
+                raise HTTPException(status_code=409, detail="Operation ID reused with conflicting payload")
+        raise HTTPException(status_code=409, detail="Concurrent reservation conflict")
+
+    db.refresh(reservation)
+    response.status_code = status.HTTP_201_CREATED
+    return build_reservation_response(reservation)
+
+@app.get("/internal/reservations/{operation_id}", response_model=ReservationResponse, dependencies=[Depends(require_internal)])
+def get_reservation(operation_id: str, db: Session = Depends(get_db)):
+    res = db.query(StockReservation).filter(StockReservation.operation_id == operation_id).first()
+    if not res:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+    return build_reservation_response(res)
+
+@app.post("/internal/reservations/{operation_id}/confirm", response_model=ReservationResponse, dependencies=[Depends(require_internal)])
+def confirm_reservation(operation_id: str, db: Session = Depends(get_db)):
+    res = db.query(StockReservation).filter(StockReservation.operation_id == operation_id).with_for_update().first()
+    if not res:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    if res.status == "CONFIRMED":
+        return build_reservation_response(res) # Idempotent repeat
+
+    if res.status == "RELEASED":
+        raise HTTPException(status_code=409, detail="Cannot confirm reservation: already released")
+
+    if res.status == "EXPIRED":
+        raise HTTPException(status_code=409, detail="Cannot confirm reservation: already expired")
+
+    now_ts = get_db_time(db)
+    expires_at = normalize_datetime(res.expires_at)
+
+    # Check expiration race using authoritative database time
+    if expires_at and now_ts >= expires_at:
+        # Finalize expiration and release hold atomically
+        sorted_keys = sorted([(item.product_id, item.warehouse_id, item.quantity) for item in res.items], key=lambda x: (x[0], x[1]))
+        for pid, wid, qty in sorted_keys:
+            inv = db.query(Inventory).filter(Inventory.product_id == pid, Inventory.warehouse_id == wid).with_for_update().first()
+            if inv:
+                inv.reserved_quantity -= qty
+                if inv.reserved_quantity < 0:
+                    raise HTTPException(status_code=500, detail="Data integrity violation: reserved_quantity became negative")
+        res.status = "EXPIRED"
+        res.updated_at = now_ts
+        db.commit()
+        raise HTTPException(status_code=409, detail="Reservation has expired")
+
+    # Valid confirmation: permanently deduct both quantity_on_hand and reserved_quantity
+    sorted_keys = sorted([(item.product_id, item.warehouse_id, item.quantity) for item in res.items], key=lambda x: (x[0], x[1]))
+    for pid, wid, qty in sorted_keys:
+        inv = db.query(Inventory).filter(Inventory.product_id == pid, Inventory.warehouse_id == wid).with_for_update().first()
+        if not inv:
+            raise HTTPException(status_code=500, detail=f"Inventory record missing for product {pid}, warehouse {wid}")
+        inv.quantity_on_hand -= qty
+        inv.reserved_quantity -= qty
+        if inv.quantity_on_hand < 0 or inv.reserved_quantity < 0:
+            raise HTTPException(status_code=500, detail="Data integrity violation: negative inventory during confirmation")
+
+    res.status = "CONFIRMED"
+    res.updated_at = now_ts
+    db.commit()
+    db.refresh(res)
+    return build_reservation_response(res)
+
+@app.post("/internal/reservations/{operation_id}/release", response_model=ReservationResponse, dependencies=[Depends(require_internal)])
+def release_reservation(operation_id: str, db: Session = Depends(get_db)):
+    res = db.query(StockReservation).filter(StockReservation.operation_id == operation_id).with_for_update().first()
+    if not res:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    if res.status == "RELEASED":
+        return build_reservation_response(res) # Idempotent repeat
+
+    if res.status == "CONFIRMED":
+        raise HTTPException(status_code=409, detail="Cannot release reservation: already confirmed")
+
+    if res.status == "EXPIRED":
+        raise HTTPException(status_code=409, detail="Cannot release reservation: already expired")
+
+    now_ts = get_db_time(db)
+
+    # Release hold if ACTIVE
+    if res.status == "ACTIVE":
+        sorted_keys = sorted([(item.product_id, item.warehouse_id, item.quantity) for item in res.items], key=lambda x: (x[0], x[1]))
+        for pid, wid, qty in sorted_keys:
+            inv = db.query(Inventory).filter(Inventory.product_id == pid, Inventory.warehouse_id == wid).with_for_update().first()
+            if inv:
+                inv.reserved_quantity -= qty
+                if inv.reserved_quantity < 0:
+                    raise HTTPException(status_code=500, detail="Data integrity violation: reserved_quantity became negative")
+
+    res.status = "RELEASED"
+    res.updated_at = now_ts
+    db.commit()
+    db.refresh(res)
+    return build_reservation_response(res)
 
 @app.get("/health/live")
 def health_live():
