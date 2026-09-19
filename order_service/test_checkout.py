@@ -147,9 +147,10 @@ def test_successful_multi_item_checkout(monkeypatch, dedicated_user, test_db):
 
     # Mock reservation: succeeds
     reserved_payloads = []
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
     def mock_reserve(op_id, items):
         reserved_payloads.append((op_id, items))
-        return ("ACTIVE", {"status": "ACTIVE", "reservation_id": 999}, None, None, False)
+        return ("ACTIVE", {"status": "ACTIVE", "reservation_id": 999, "expires_at": future_ts}, None, None, False)
     monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
 
     headers = make_headers(user_id=user_id, idempotency_key=f"checkout-success-{uuid.uuid4().hex[:6]}")
@@ -258,8 +259,9 @@ def test_idempotent_replay_after_cart_cleared(monkeypatch, dedicated_user, test_
         return {"price": "25.00", "name": "Item 1"}
     monkeypatch.setattr(main, "fetch_product", mock_fetch)
 
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
     def mock_reserve(op_id, items):
-        return ("ACTIVE", {"status": "ACTIVE", "reservation_id": 101}, None, None, False)
+        return ("ACTIVE", {"status": "ACTIVE", "reservation_id": 101, "expires_at": future_ts}, None, None, False)
     monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
 
     ik = f"idemp-key-replay-{uuid.uuid4().hex[:6]}"
@@ -304,8 +306,9 @@ def test_conflicting_idempotency_key(monkeypatch, dedicated_user, test_db):
         return {"price": "15.00", "name": "Item 1"}
     monkeypatch.setattr(main, "fetch_product", mock_fetch)
 
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
     def mock_reserve(op_id, items):
-        return ("ACTIVE", {"status": "ACTIVE"}, None, None, False)
+        return ("ACTIVE", {"status": "ACTIVE", "expires_at": future_ts}, None, None, False)
     monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
 
     ik = f"conflict-key-{uuid.uuid4().hex[:6]}"
@@ -433,8 +436,9 @@ def test_recovery_rejects_expired_active_reservation(monkeypatch, dedicated_user
     # Product Service returns ACTIVE, BUT expires_at is 5 minutes in the past!
     past_ts = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
     def mock_get_res(op_id):
-        return ("ACTIVE", {"status": "ACTIVE", "expires_at": past_ts}, True)
+        return ("ACTIVE", {"status": "ACTIVE", "expires_at": past_ts}, True, False)
     monkeypatch.setattr(main, "get_reservation_internal", mock_get_res)
+    monkeypatch.setattr(main, "release_reservation_internal", lambda op_id: True)
 
     # Run recovery
     rec = recover_single_checkout(db, chk.checkout_id)
@@ -462,8 +466,9 @@ def test_compensation_after_order_failure(monkeypatch, dedicated_user, test_db):
 
     # Reservation succeeds
     released_ops = []
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
     def mock_reserve(op_id, items):
-        return ("ACTIVE", {"status": "ACTIVE"}, None, None, False)
+        return ("ACTIVE", {"status": "ACTIVE", "expires_at": future_ts}, None, None, False)
     def mock_release(op_id):
         released_ops.append(op_id)
         return True
@@ -508,8 +513,9 @@ def test_cross_user_idempotency_scoping(monkeypatch, dedicated_user_pair, test_d
         return {"price": "10.00", "name": "Item 1"}
     monkeypatch.setattr(main, "fetch_product", mock_fetch)
 
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
     def mock_reserve(op_id, items):
-        return ("ACTIVE", {"status": "ACTIVE"}, None, None, False)
+        return ("ACTIVE", {"status": "ACTIVE", "expires_at": future_ts}, None, None, False)
     monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
 
     # User 1 checks out with "shared-key-1"
@@ -542,9 +548,10 @@ def test_legacy_order_route_requires_idempotency_and_reserves(monkeypatch, dedic
 
     # With Idempotency-Key, triggers reservation workflow
     reserved_ops = []
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
     def mock_reserve(op_id, items):
         reserved_ops.append((op_id, items))
-        return ("ACTIVE", {"status": "ACTIVE"}, None, None, False)
+        return ("ACTIVE", {"status": "ACTIVE", "expires_at": future_ts}, None, None, False)
     monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
 
     ik = f"legacy-key-{uuid.uuid4().hex[:6]}"
@@ -810,4 +817,220 @@ def test_concurrent_recovery_workers_finalize_exactly_once(monkeypatch, dedicate
     orders = db.query(Order).filter(Order.user_id == user_id).all()
     assert len(orders) == 1
     assert orders[0].order_id == results[0][1]
+
+
+# -----------------------------------------------------------------------------
+# 18. Defect 1: Recovery when original reservation POST was never sent (Crash Recovery)
+# -----------------------------------------------------------------------------
+def test_recovery_when_original_post_was_never_sent(monkeypatch, dedicated_user, test_db):
+    user_id = dedicated_user
+    db = test_db
+
+    # Setup a checkout in RESERVING state (simulating crash after Tx 1 before remote POST)
+    orig_res_op_id = f"res_unsent_{uuid.uuid4().hex[:6]}"
+    chk = Checkout(
+        user_id=user_id,
+        operation_id=f"unsent-op-{uuid.uuid4().hex[:6]}",
+        idempotency_key=f"unsent-key-{uuid.uuid4().hex[:6]}",
+        request_fingerprint="fp_unsent",
+        reservation_op_id=orig_res_op_id,
+        status="RESERVING",
+        total_amount=Decimal("50.00"),
+        items_snapshot=[{"product_id": 1, "quantity": 1, "unit_price": "50.00", "subtotal": "50.00"}]
+    )
+    db.add(chk)
+    db.commit()
+
+    # Initial reservation lookup returns 404 (NOT_FOUND) because POST was never sent
+    lookup_calls = []
+    def mock_lookup(op_id):
+        lookup_calls.append(op_id)
+        return ("NOT_FOUND", None, False, True)
+    monkeypatch.setattr(main, "get_reservation_internal", mock_lookup)
+
+    # Recovery retries POST using the SAME reservation_op_id and items_snapshot
+    retry_posts = []
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+    def mock_reserve(op_id, items):
+        retry_posts.append((op_id, items))
+        return ("ACTIVE", {"status": "ACTIVE", "expires_at": future_ts}, None, None, False)
+    monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
+
+    # Execute recovery
+    recovered = recover_single_checkout(db, chk.checkout_id)
+
+    # Verify:
+    # 1. Lookup returned 404
+    assert len(lookup_calls) == 1
+    # 2. Retry POST was sent with the EXACT same reservation_op_id and items_snapshot
+    assert len(retry_posts) == 1
+    assert retry_posts[0][0] == orig_res_op_id
+    assert retry_posts[0][1] == [{"product_id": 1, "quantity": 1}]
+    # 3. Exactly one order created and checkout finalized as RESERVED
+    assert recovered.status == "RESERVED"
+    assert recovered.order_id is not None
+    orders = db.query(Order).filter(Order.user_id == user_id).all()
+    assert len(orders) == 1
+    assert orders[0].order_id == recovered.order_id
+
+
+# -----------------------------------------------------------------------------
+# 19. Defect 2: Expiration compensation release failure preserves COMPENSATION_REQUIRED
+# -----------------------------------------------------------------------------
+def test_expiration_compensation_release_timeout_preserves_compensation_required(monkeypatch, dedicated_user, test_db):
+    user_id = dedicated_user
+    db = test_db
+
+    cart = Cart(user_id=user_id)
+    db.add(cart)
+    db.flush()
+    db.add(CartItemModel(cart_id=cart.cart_id, product_id=1, quantity=1))
+    db.commit()
+
+    monkeypatch.setattr(main, "fetch_product", lambda pid, rid, auth: {"price": "30.00", "name": "Item 1"})
+
+    # Product Service returns ACTIVE reservation, but expired
+    past_ts = (datetime.now(timezone.utc) - timedelta(seconds=5)).isoformat()
+    monkeypatch.setattr(
+        main, "reserve_inventory_internal",
+        lambda op_id, items: ("ACTIVE", {"status": "ACTIVE", "expires_at": past_ts}, None, None, False)
+    )
+
+    # Compensation release times out / fails!
+    monkeypatch.setattr(main, "release_reservation_internal", lambda op_id: False)
+
+    ik = f"exp-timeout-{uuid.uuid4().hex[:6]}"
+    resp = client.post("/checkout", json={}, headers=make_headers(user_id=user_id, idempotency_key=ik))
+    # Must fail, NOT succeed
+    assert resp.status_code == 500
+
+    # No order must be created
+    assert db.query(Order).filter(Order.user_id == user_id).count() == 0
+
+    # Checkout status must NOT be FAILED! Must be COMPENSATION_REQUIRED because hold release was not confirmed!
+    chk = db.query(Checkout).filter(Checkout.user_id == user_id, Checkout.idempotency_key == ik).first()
+    assert chk.status == "COMPENSATION_REQUIRED"
+    assert chk.failure_code == "RESERVATION_EXPIRED"
+
+    # Subsequent recovery pass where release now succeeds
+    monkeypatch.setattr(main, "release_reservation_internal", lambda op_id: True)
+    recovered = recover_single_checkout(db, chk.checkout_id)
+    assert recovered.status == "CANCELLED"
+
+
+# -----------------------------------------------------------------------------
+# 20. Defect 2: Missing or malformed expiration metadata fails closed
+# -----------------------------------------------------------------------------
+def test_missing_or_malformed_expiration_metadata_fails_closed(monkeypatch, dedicated_user, test_db):
+    user_id = dedicated_user
+    db = test_db
+
+    # Test missing expires_at
+    released_ops = []
+    monkeypatch.setattr(main, "release_reservation_internal", lambda op_id: released_ops.append(op_id) or True)
+
+    chk = Checkout(
+        user_id=user_id,
+        operation_id=f"malformed-op-{uuid.uuid4().hex[:6]}",
+        idempotency_key=f"malformed-key-{uuid.uuid4().hex[:6]}",
+        request_fingerprint="fp_malformed",
+        reservation_op_id=f"res_malformed_{uuid.uuid4().hex[:6]}",
+        status="UNKNOWN",
+        total_amount=Decimal("45.00"),
+        items_snapshot=[{"product_id": 1, "quantity": 1, "unit_price": "45.00", "subtotal": "45.00"}]
+    )
+    db.add(chk)
+    db.commit()
+
+    # Product Service returns status ACTIVE but expires_at is malformed
+    monkeypatch.setattr(
+        main, "get_reservation_internal",
+        lambda op_id: ("ACTIVE", {"status": "ACTIVE", "expires_at": "not-a-valid-timestamp"}, True, False)
+    )
+
+    recovered = recover_single_checkout(db, chk.checkout_id)
+    # Must NOT assume valid! Must fail closed and release hold
+    assert recovered.status == "FAILED"
+    assert recovered.failure_code == "RESERVATION_EXPIRED"
+    assert len(released_ops) == 1
+    assert db.query(Order).filter(Order.user_id == user_id).count() == 0
+
+
+# -----------------------------------------------------------------------------
+# 21. Defect 3: Release HTTP 404 does NOT report success during in-flight commit race
+# -----------------------------------------------------------------------------
+def test_release_404_preserves_compensation_and_releases_once_committed(monkeypatch, dedicated_user, test_db):
+    user_id = dedicated_user
+    db = test_db
+
+    res_op_id = f"res_race404_{uuid.uuid4().hex[:6]}"
+    chk = Checkout(
+        user_id=user_id,
+        operation_id=f"race404-op-{uuid.uuid4().hex[:6]}",
+        idempotency_key=f"race404-key-{uuid.uuid4().hex[:6]}",
+        request_fingerprint="fp_race404",
+        reservation_op_id=res_op_id,
+        status="COMPENSATION_REQUIRED",
+        total_amount=Decimal("70.00"),
+        items_snapshot=[{"product_id": 1, "quantity": 1, "unit_price": "70.00", "subtotal": "70.00"}]
+    )
+    db.add(chk)
+    db.commit()
+
+    # Pass 1: Release request arrives at Product Service before reservation POST transaction commits -> receives 404
+    # release_reservation_internal MUST return False, NOT True!
+    monkeypatch.setattr(main, "release_reservation_internal", lambda op_id: False)
+    rec1 = recover_single_checkout(db, chk.checkout_id)
+    # Checkout MUST remain COMPENSATION_REQUIRED, NOT CANCELLED!
+    assert rec1.status == "COMPENSATION_REQUIRED"
+
+    # Pass 2: Reservation POST transaction commits ACTIVE.
+    # Now release request finds the ACTIVE reservation and successfully releases it
+    monkeypatch.setattr(main, "release_reservation_internal", lambda op_id: True)
+    rec2 = recover_single_checkout(db, chk.checkout_id)
+    assert rec2.status == "CANCELLED"
+
+
+# -----------------------------------------------------------------------------
+# 22. Defect 4: Verify zero database transactions open during network calls
+# -----------------------------------------------------------------------------
+def test_zero_database_transactions_across_network_calls(monkeypatch, dedicated_user, test_db):
+    user_id = dedicated_user
+    db = test_db
+
+    cart = Cart(user_id=user_id)
+    db.add(cart)
+    db.flush()
+    db.add(CartItemModel(cart_id=cart.cart_id, product_id=1, quantity=2))
+    db.commit()
+
+    # Track active database transactions during remote calls
+    transactions_during_remote = []
+
+    def check_db_no_tx():
+        # Check if the test_db session or connection has an active transaction
+        is_tx = db.in_transaction()
+        transactions_during_remote.append(is_tx)
+
+    orig_fetch = main.fetch_product
+    def hooked_fetch(pid, rid, auth):
+        check_db_no_tx()
+        return {"price": "20.00", "name": "Item 1"}
+    monkeypatch.setattr(main, "fetch_product", hooked_fetch)
+
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+    def hooked_reserve(op_id, items):
+        check_db_no_tx()
+        return ("ACTIVE", {"status": "ACTIVE", "expires_at": future_ts}, None, None, False)
+    monkeypatch.setattr(main, "reserve_inventory_internal", hooked_reserve)
+
+    ik = f"zerotx-{uuid.uuid4().hex[:6]}"
+    resp = client.post("/checkout", json={}, headers=make_headers(user_id=user_id, idempotency_key=ik))
+    assert resp.status_code == 201
+
+    # Verify that in EVERY remote call, in_transaction was False!
+    assert len(transactions_during_remote) >= 2 # at least 1 price call + 1 reservation call
+    for is_tx in transactions_during_remote:
+        assert is_tx is False, "Active database transaction detected during remote call!"
+
 

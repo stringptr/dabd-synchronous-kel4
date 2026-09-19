@@ -101,8 +101,9 @@ def test_create_order_success(monkeypatch):
     monkeypatch.setattr(main, "fetch_product", mock_fetch)
     main.breaker.close()
     
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
     def mock_reserve(op_id, items):
-        return ("ACTIVE", {"status": "ACTIVE"}, None, None, False)
+        return ("ACTIVE", {"status": "ACTIVE", "expires_at": future_ts}, None, None, False)
     monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
 
     response = client.post("/orders", json={
@@ -134,8 +135,9 @@ def test_get_orders(monkeypatch):
     monkeypatch.setattr(main, "fetch_product", mock_fetch)
     main.breaker.close()
     
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
     def mock_reserve(op_id, items):
-        return ("ACTIVE", {"status": "ACTIVE"}, None, None, False)
+        return ("ACTIVE", {"status": "ACTIVE", "expires_at": future_ts}, None, None, False)
     monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
 
     client.post("/orders", json={
@@ -156,8 +158,9 @@ def test_order_isolation_between_users(monkeypatch):
     monkeypatch.setattr(main, "fetch_product", mock_fetch)
     main.breaker.close()
     
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
     def mock_reserve(op_id, items):
-        return ("ACTIVE", {"status": "ACTIVE"}, None, None, False)
+        return ("ACTIVE", {"status": "ACTIVE", "expires_at": future_ts}, None, None, False)
     monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
 
     # User 1 creates an order
@@ -215,8 +218,9 @@ def test_create_order_compensation_on_persistence_failure(monkeypatch):
     monkeypatch.setattr(main, "fetch_product", lambda pid, rid, auth: {"price": 75.0, "name": "Product 1"})
     main.breaker.close()
 
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
     def mock_reserve(op_id, items):
-        return ("ACTIVE", {"status": "ACTIVE"}, None, None, False)
+        return ("ACTIVE", {"status": "ACTIVE", "expires_at": future_ts}, None, None, False)
     monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
 
     released_ops = []
@@ -245,8 +249,9 @@ def test_create_order_concurrent_idempotent_requests(monkeypatch):
     monkeypatch.setattr(main, "fetch_product", lambda pid, rid, auth: {"price": 30.0, "name": "Product 1"})
     main.breaker.close()
 
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
     def mock_reserve(op_id, items):
-        return ("ACTIVE", {"status": "ACTIVE"}, None, None, False)
+        return ("ACTIVE", {"status": "ACTIVE", "expires_at": future_ts}, None, None, False)
     monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
 
     ik = f"ord-conc-{uuid.uuid4().hex[:6]}"
