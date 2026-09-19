@@ -171,6 +171,18 @@ def fetch_product(product_id: int, request_id: str, authorization: str = None):
 def fetch_product_with_breaker(product_id: int, request_id: str, authorization: str = None):
     return fetch_product(product_id, request_id, authorization)
 
+DOCUMENTED_BUSINESS_FAILURE_CODES = {
+    "PRODUCT_NOT_FOUND",
+    "INSUFFICIENT_STOCK",
+    "CONFLICTING_PAYLOAD",
+    "DUPLICATE_PRODUCT_IN_REQUEST",
+    "ALREADY_CONFIRMED",
+    "ALREADY_RELEASED",
+    "RESERVATION_EXPIRED",
+    "DATA_INTEGRITY_VIOLATION",
+    "CONFLICT"
+}
+
 def reserve_inventory_internal(
     reservation_op_id: str, 
     items: List[dict]
@@ -178,6 +190,11 @@ def reserve_inventory_internal(
     """
     Calls Product Service internal reservation endpoint across replicas.
     Returns: (status, response_data, failure_code, failure_reason, is_ambiguous).
+
+    Distinguishes:
+    - Valid successful reservation responses (201, 200 ACTIVE).
+    - Documented, structured, definitive business failures (404 PRODUCT_NOT_FOUND, 409 INSUFFICIENT_STOCK/CONFLICT, etc.).
+    - Ambiguous infrastructure failures (500, 504, timeouts, connection errors, malformed responses) -> returns UNKNOWN (is_ambiguous=True).
     """
     replicas = get_product_service_replicas()
     headers = {
@@ -190,47 +207,85 @@ def reserve_inventory_internal(
     }
     
     last_error = None
+    last_status = None
     for replica in replicas:
         try:
             with httpx.Client(timeout=httpx.Timeout(5.0, connect=3.0)) as client:
                 resp = client.post(f"{replica}/internal/reservations", json=payload, headers=headers)
             
+            # Category 1: Valid successful reservation responses
             if resp.status_code == 201:
-                return ("ACTIVE", resp.json(), None, None, False)
+                try:
+                    data = resp.json()
+                    if isinstance(data, dict) and data.get("operation_id") and data.get("status") == "ACTIVE":
+                        return ("ACTIVE", data, None, None, False)
+                    return ("UNKNOWN", data if isinstance(data, dict) else None, "MALFORMED_RESPONSE", "Malformed 201 response schema", True)
+                except Exception as e:
+                    return ("UNKNOWN", None, "MALFORMED_RESPONSE", f"Failed to parse 201 response: {e}", True)
+
             elif resp.status_code == 200:
-                data = resp.json()
-                st = data.get("status", "ACTIVE")
-                return (st, data, data.get("failure_code"), data.get("failure_reason"), False)
-            elif resp.status_code == 400:
-                # Stock exhaustion - definitive business failure, do NOT trip circuit breaker
-                data = resp.json()
-                return ("FAILED", data, data.get("failure_code", "INSUFFICIENT_STOCK"), data.get("failure_reason") or str(data.get("detail")), False)
-            elif resp.status_code == 404:
-                # Product not found - definitive business failure
-                data = resp.json()
-                return ("FAILED", data, data.get("failure_code", "PRODUCT_NOT_FOUND"), data.get("failure_reason") or str(data.get("detail")), False)
-            elif resp.status_code == 409:
-                # Replayed / conflict
-                data = resp.json()
-                return (data.get("status", "FAILED"), data, data.get("failure_code", "CONFLICT"), data.get("failure_reason") or str(data.get("detail")), False)
+                try:
+                    data = resp.json()
+                    if isinstance(data, dict):
+                        st = data.get("status", "ACTIVE")
+                        if st == "ACTIVE":
+                            return ("ACTIVE", data, None, None, False)
+                        elif st == "FAILED":
+                            fc = data.get("failure_code", "FAILED")
+                            fr = data.get("failure_reason") or str(data.get("detail"))
+                            return ("FAILED", data, fc, fr, False)
+                        elif st in ("CONFIRMED", "RELEASED", "EXPIRED"):
+                            return (st, data, data.get("failure_code"), data.get("failure_reason"), False)
+                    return ("UNKNOWN", data if isinstance(data, dict) else None, "MALFORMED_RESPONSE", "Malformed 200 response schema", True)
+                except Exception as e:
+                    return ("UNKNOWN", None, "MALFORMED_RESPONSE", f"Failed to parse 200 response: {e}", True)
+
+            # Category 2: Documented, structured, definitive business failures
+            elif resp.status_code in (400, 404, 409):
+                try:
+                    data = resp.json()
+                    if isinstance(data, dict):
+                        fc = data.get("failure_code")
+                        fr = data.get("failure_reason") or str(data.get("detail"))
+                        if fc in DOCUMENTED_BUSINESS_FAILURE_CODES:
+                            return ("FAILED", data, fc, fr, False)
+                except Exception:
+                    pass
+
+                last_error = f"Replica {replica} returned undocumented HTTP {resp.status_code}: {resp.text}"
+                last_status = resp.status_code
+                continue
+
+            # Category 3: Ambiguous infrastructure failures and server errors
+            elif resp.status_code in (500, 504):
+                # Request reached product service; hold may have been committed before error.
+                # Must preserve UNKNOWN (is_ambiguous=True) to allow recovery using original reservation_op_id.
+                last_error = f"Replica {replica} returned HTTP {resp.status_code}: {resp.text}"
+                last_status = resp.status_code
+                return ("UNKNOWN", None, f"HTTP_{resp.status_code}", last_error, True)
+
             elif resp.status_code in (502, 503):
                 last_error = f"Replica {replica} returned HTTP {resp.status_code}"
+                last_status = resp.status_code
                 continue
+
             else:
-                return ("FAILED", None, f"HTTP_{resp.status_code}", resp.text, False)
+                last_error = f"Replica {replica} returned unexpected HTTP {resp.status_code}: {resp.text}"
+                last_status = resp.status_code
+                return ("UNKNOWN", None, f"HTTP_{resp.status_code}", last_error, True)
+
         except (httpx.ConnectError, httpx.ConnectTimeout) as e:
             last_error = f"Connection error to {replica}: {e}"
             continue
-        except httpx.ReadTimeout as e:
-            # Ambiguous: request reached product service, but socket read timed out.
-            # Do NOT continue failover or retry with fresh attempt; preserve operation ID and probe state.
-            return ("UNKNOWN", None, "READ_TIMEOUT", f"Read timeout from {replica}: {e}", True)
+        except (httpx.ReadTimeout, httpx.WriteTimeout) as e:
+            return ("UNKNOWN", None, "TIMEOUT", f"Timeout communicating with {replica}: {e}", True)
         except Exception as e:
             last_error = str(e)
             continue
 
-    # If all replicas experienced connection failures
-    return ("UNKNOWN", None, "CONNECT_FAILURE", f"All replicas failed: {last_error}", True)
+    # If all replicas experienced connection or gateway failures
+    err_code = f"HTTP_{last_status}" if last_status else "CONNECT_FAILURE"
+    return ("UNKNOWN", None, err_code, f"All replicas failed: {last_error}", True)
 
 def get_reservation_internal(reservation_op_id: str) -> Tuple[Optional[str], Optional[dict], bool, bool]:
     """
@@ -270,7 +325,7 @@ def get_reservation_internal(reservation_op_id: str) -> Tuple[Optional[str], Opt
             elif resp.status_code == 404:
                 # 404 after ambiguous POST is not proof of permanent failure
                 return ("NOT_FOUND", None, False, True)
-            elif resp.status_code in (502, 503):
+            elif resp.status_code in (500, 502, 503, 504):
                 continue
         except Exception:
             continue
@@ -310,7 +365,7 @@ def release_reservation_internal(reservation_op_id: str) -> bool:
                         return False
                 except Exception:
                     pass
-            elif resp.status_code in (502, 503):
+            elif resp.status_code in (500, 502, 503, 504):
                 continue
         except Exception:
             continue
@@ -603,10 +658,6 @@ def reconcile_and_recover_checkout(checkout_id: int, clear_cart: bool = False, d
                     res_status = "UNKNOWN"
                     is_uncertain = True
 
-            # If ACTIVE and expired, attempt verifiable compensation release
-            if res_status == "ACTIVE" and is_expired:
-                released = release_reservation_internal(res_op_id)
-
         elif current_status == "COMPENSATION_REQUIRED":
             released = release_reservation_internal(res_op_id)
 
@@ -625,18 +676,44 @@ def reconcile_and_recover_checkout(checkout_id: int, clear_cart: bool = False, d
 
         if chk.status in ("INITIATED", "RESERVING", "UNKNOWN"):
             if res_status == "ACTIVE":
-                if is_expired:
-                    # DEFECT 2: Only record terminal failure if release is verified!
-                    if released:
-                        chk.status = "FAILED"
-                        chk.failure_code = "RESERVATION_EXPIRED"
-                        chk.failure_reason = "Reservation expired before checkout finalization could complete"
-                    else:
-                        # Release not verified (timed out, connection failure, ambiguous)
-                        # Preserve COMPENSATION_REQUIRED to allow subsequent recovery to release hold!
-                        chk.status = "COMPENSATION_REQUIRED"
-                        chk.failure_code = "RESERVATION_EXPIRED"
-                        chk.failure_reason = "Reservation expired before checkout finalization could complete; release pending confirmation"
+                # Recheck expiration AFTER acquiring finalization lock!
+                exp_str = res_data.get("expires_at") if res_data else None
+                lock_is_expired = False
+                if not exp_str:
+                    lock_is_expired = True
+                else:
+                    try:
+                        exp_dt = datetime.fromisoformat(exp_str.replace("Z", "+00:00"))
+                        if exp_dt.tzinfo is None:
+                            exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+                        if datetime.now(timezone.utc) >= exp_dt:
+                            lock_is_expired = True
+                    except Exception:
+                        lock_is_expired = True
+
+                if lock_is_expired:
+                    # Do not create order. End local transaction before contacting Product Service:
+                    active_db.rollback()
+                    assert not active_db.in_transaction(), "Transaction open during recovery expiration release"
+
+                    released = release_reservation_internal(res_op_id)
+
+                    try:
+                        chk = active_db.query(Checkout).filter(Checkout.checkout_id == checkout_id).with_for_update().first()
+                        if chk and chk.status not in ("RESERVED", "CANCELLED"):
+                            if released:
+                                chk.status = "FAILED"
+                                chk.failure_code = "RESERVATION_EXPIRED"
+                                chk.failure_reason = "Reservation expired before checkout finalization could complete"
+                            else:
+                                chk.status = "COMPENSATION_REQUIRED"
+                                chk.failure_code = "RESERVATION_EXPIRED"
+                                chk.failure_reason = "Reservation expired before checkout finalization could complete; release pending confirmation"
+                            chk.updated_at = datetime.now(timezone.utc)
+                            active_db.commit()
+                    except Exception:
+                        active_db.rollback()
+                    return chk
                 else:
                     # Exactly-once local order creation
                     if not chk.order_id:
@@ -691,7 +768,10 @@ def reconcile_and_recover_checkout(checkout_id: int, clear_cart: bool = False, d
 
         chk.updated_at = datetime.now(timezone.utc)
         active_db.commit()
-        active_db.refresh(chk)
+        try:
+            active_db.refresh(chk)
+        except Exception:
+            pass
         return chk
     finally:
         if not use_external_db:
@@ -1026,11 +1106,31 @@ def execute_checkout_orchestration(
         # 5. TX 2: Finalize order, fail, or trigger compensation
         # ---------------------------------------------------------------------
         if res_status == "ACTIVE":
-            # Check expiration immediately before order finalization!
+            # -----------------------------------------------------------------
+            # Step 1: Acquire checkout row lock for finalization
+            # -----------------------------------------------------------------
+            if active_db.in_transaction():
+                active_db.commit()
+
+            chk = active_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).with_for_update().first()
+            if not chk:
+                active_db.commit()
+                raise HTTPException(status_code=404, detail="Checkout not found")
+
+            # Check if concurrent recovery or process already finalized it
+            if chk.status in ("RESERVED", "FAILED", "CANCELLED"):
+                active_db.commit()
+                order_obj = active_db.query(Order).filter(Order.order_id == chk.order_id).first() if chk.order_id else None
+                active_db.commit()
+                return chk, order_obj
+
+            # -----------------------------------------------------------------
+            # Step 2: RECHECK EXPIRATION AFTER ACQUIRING FINALIZATION LOCK!
+            # -----------------------------------------------------------------
             exp_str = res_data.get("expires_at") if res_data else None
             is_expired = False
             if not exp_str:
-                # Missing metadata: do NOT assume valid!
+                # Missing metadata: fail closed
                 is_expired = True
             else:
                 try:
@@ -1040,25 +1140,34 @@ def execute_checkout_orchestration(
                     if datetime.now(timezone.utc) >= exp_dt:
                         is_expired = True
                 except Exception:
-                    # Malformed metadata: do NOT assume valid!
+                    # Malformed metadata: fail closed
                     is_expired = True
 
             if is_expired:
-                # Expired immediately prior to finalization: release hold outside transaction
+                # Do NOT create an order!
+                # End local transaction before contacting Product Service:
+                active_db.rollback()
                 assert not active_db.in_transaction(), "Transaction open during expiration release"
+
+                # Attempt verifiable release outside transaction:
                 released = release_reservation_internal(reservation_op_id)
-                chk = active_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).with_for_update().first()
-                if chk:
-                    if released:
-                        chk.status = "FAILED"
-                        chk.failure_code = "RESERVATION_EXPIRED"
-                        chk.failure_reason = "Reservation expired before checkout finalization could complete"
-                    else:
-                        chk.status = "COMPENSATION_REQUIRED"
-                        chk.failure_code = "RESERVATION_EXPIRED"
-                        chk.failure_reason = "Reservation expired before checkout finalization could complete; release pending confirmation"
-                    chk.updated_at = datetime.now(timezone.utc)
-                    active_db.commit()
+
+                try:
+                    chk = active_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).with_for_update().first()
+                    if chk and chk.status not in ("RESERVED", "CANCELLED"):
+                        if released:
+                            chk.status = "FAILED"
+                            chk.failure_code = "RESERVATION_EXPIRED"
+                            chk.failure_reason = "Reservation expired before checkout finalization could complete"
+                        else:
+                            # Release not verified: preserve COMPENSATION_REQUIRED
+                            chk.status = "COMPENSATION_REQUIRED"
+                            chk.failure_code = "RESERVATION_EXPIRED"
+                            chk.failure_reason = "Reservation expired before checkout finalization could complete; release pending confirmation"
+                        chk.updated_at = datetime.now(timezone.utc)
+                        active_db.commit()
+                except Exception:
+                    active_db.rollback()
 
                 if released:
                     raise HTTPException(
@@ -1079,9 +1188,12 @@ def execute_checkout_orchestration(
                         }
                     )
 
+            # -----------------------------------------------------------------
+            # Step 3: Local order persistence (Pre-commit vs Post-commit separation)
+            # -----------------------------------------------------------------
+            committed_successfully = False
+            new_order = None
             try:
-                chk = active_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).with_for_update().first()
-                new_order = None
                 if not chk.order_id:
                     new_order = Order(
                         user_id=user_id,
@@ -1096,7 +1208,7 @@ def execute_checkout_orchestration(
                             order_id=new_order.order_id,
                             product_id=it["product_id"],
                             quantity=it["quantity"],
-                            unit_price=Decimal(str(it["unit_price"]))
+                            unit_price=Decimal(str(it.get("unit_price") or it.get("price", "0.00")))
                         )
                         active_db.add(order_item)
 
@@ -1115,46 +1227,81 @@ def execute_checkout_orchestration(
                 chk.status = "RESERVED"
                 chk.updated_at = datetime.now(timezone.utc)
                 active_db.commit()
-                active_db.refresh(chk)
-                if new_order:
-                    active_db.refresh(new_order)
-                else:
-                    new_order = active_db.query(Order).filter(Order.order_id == chk.order_id).first()
-                    active_db.commit()
-                return chk, new_order
+                committed_successfully = True
             except Exception as e:
-                active_db.rollback()
-                # Order persistence failed despite ACTIVE reservation -> COMPENSATION REQUIRED!
+                # Pre-commit failure or ambiguous commit outcome
                 try:
-                    chk = active_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).with_for_update().first()
-                    if chk:
-                        chk.status = "COMPENSATION_REQUIRED"
-                        chk.failure_code = "ORDER_PERSISTENCE_FAILED"
-                        chk.failure_reason = str(e)
-                        chk.updated_at = datetime.now(timezone.utc)
-                        active_db.commit()
-                except Exception:
                     active_db.rollback()
+                except Exception:
+                    pass
 
-                # Verifiable release outside transaction:
-                if active_db.in_transaction():
-                    active_db.commit()
-                assert not active_db.in_transaction(), "Transaction open during compensation release"
-                released = release_reservation_internal(reservation_op_id)
-                if released:
+                # Inspect persisted checkout/order state for ambiguous commit outcomes
+                try:
+                    inspect_Session = sessionmaker(bind=active_db.get_bind())
+                    inspect_db = inspect_Session()
+                    try:
+                        persisted_chk = inspect_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).first()
+                        if persisted_chk and persisted_chk.status == "RESERVED" and persisted_chk.order_id:
+                            committed_successfully = True
+                    finally:
+                        inspect_db.close()
+                except Exception:
+                    pass
+
+                if not committed_successfully:
+                    # Genuinely a pre-commit persistence failure -> COMPENSATION REQUIRED!
                     try:
                         chk = active_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).with_for_update().first()
                         if chk:
-                            chk.status = "CANCELLED"
+                            chk.status = "COMPENSATION_REQUIRED"
+                            chk.failure_code = "ORDER_PERSISTENCE_FAILED"
+                            chk.failure_reason = str(e)
                             chk.updated_at = datetime.now(timezone.utc)
                             active_db.commit()
                     except Exception:
                         active_db.rollback()
 
-                raise HTTPException(
-                    status_code=500,
-                    detail="Checkout failed during order finalization; inventory hold compensation initiated."
-                )
+                    # Verifiable release outside transaction:
+                    if active_db.in_transaction():
+                        active_db.commit()
+                    assert not active_db.in_transaction(), "Transaction open during compensation release"
+                    released = release_reservation_internal(reservation_op_id)
+                    if released:
+                        try:
+                            chk = active_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).with_for_update().first()
+                            if chk:
+                                chk.status = "CANCELLED"
+                                chk.updated_at = datetime.now(timezone.utc)
+                                active_db.commit()
+                        except Exception:
+                            active_db.rollback()
+
+                    raise HTTPException(
+                        status_code=500,
+                        detail="Checkout failed during order finalization; inventory hold compensation initiated."
+                    )
+
+            # -----------------------------------------------------------------
+            # Step 4: Post-commit response formatting
+            # -----------------------------------------------------------------
+            if committed_successfully:
+                try:
+                    read_chk = active_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).first()
+                    order_obj = active_db.query(Order).filter(Order.order_id == read_chk.order_id).first() if (read_chk and read_chk.order_id) else None
+                    if active_db.in_transaction():
+                        active_db.commit()
+                    return read_chk or chk, order_obj
+                except Exception as post_err:
+                    logger.warning(f"Post-commit response building failed for checkout {created_checkout_id}: {post_err}")
+                    if active_db.in_transaction():
+                        try:
+                            active_db.rollback()
+                        except Exception:
+                            pass
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Order successfully created, but failed to format immediate response. Retry request with the same Idempotency-Key to retrieve your order."
+                    )
 
         elif res_status == "FAILED":
             try:
@@ -1171,7 +1318,7 @@ def execute_checkout_orchestration(
             status_code = status.HTTP_400_BAD_REQUEST
             if fail_code == "PRODUCT_NOT_FOUND":
                 status_code = status.HTTP_404_NOT_FOUND
-            elif fail_code == "CONFLICT":
+            elif fail_code in ("CONFLICT", "CONFLICTING_PAYLOAD"):
                 status_code = status.HTTP_409_CONFLICT
 
             raise HTTPException(
@@ -1205,7 +1352,9 @@ def execute_checkout_orchestration(
                 active_db.commit()
                 return recovered, order
             elif recovered.status == "FAILED":
-                status_code = status.HTTP_409_CONFLICT if recovered.failure_code == "CONFLICT" else status.HTTP_400_BAD_REQUEST
+                status_code = status.HTTP_409_CONFLICT if recovered.failure_code in ("CONFLICT", "CONFLICTING_PAYLOAD") else status.HTTP_400_BAD_REQUEST
+                if recovered.failure_code == "PRODUCT_NOT_FOUND":
+                    status_code = status.HTTP_404_NOT_FOUND
                 raise HTTPException(
                     status_code=status_code,
                     detail={"message": "Checkout failed during resolution", "failure_code": recovered.failure_code, "failure_reason": recovered.failure_reason}
@@ -1273,7 +1422,14 @@ def checkout(
     if existing and chk.status == "RESERVED":
         response.status_code = status.HTTP_200_OK
 
-    return build_checkout_response(chk)
+    try:
+        return build_checkout_response(chk)
+    except Exception as e:
+        logger.warning(f"Failed to build checkout response for checkout {chk.checkout_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Order successfully created, but failed to format immediate response. Retry request with the same Idempotency-Key to retrieve your order."
+        )
 
 # Protected Internal Recovery Route
 @app.post("/internal/checkout/recover", dependencies=[Depends(require_internal)])

@@ -1034,3 +1034,330 @@ def test_zero_database_transactions_across_network_calls(monkeypatch, dedicated_
         assert is_tx is False, "Active database transaction detected during remote call!"
 
 
+# -----------------------------------------------------------------------------
+# 23. Finding 1: Prevent compensation after successful order commit
+# -----------------------------------------------------------------------------
+def test_prevent_compensation_after_successful_order_commit(monkeypatch, dedicated_user, test_db):
+    user_id = dedicated_user
+    db = test_db
+
+    cart = Cart(user_id=user_id)
+    db.add(cart)
+    db.flush()
+    db.add(CartItemModel(cart_id=cart.cart_id, product_id=1, quantity=1))
+    db.commit()
+
+    def mock_fetch(pid, rid, auth):
+        return {"price": "10.00", "name": "Item 1"}
+    monkeypatch.setattr(main, "fetch_product", mock_fetch)
+
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+    def mock_reserve(op_id, items):
+        return ("ACTIVE", {"status": "ACTIVE", "operation_id": op_id, "expires_at": future_ts}, None, None, False)
+    monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
+
+    # Track any calls to release_reservation_internal
+    release_calls = []
+    def mock_release(op_id):
+        release_calls.append(op_id)
+        return True
+    monkeypatch.setattr(main, "release_reservation_internal", mock_release)
+
+    # Simulate post-commit failure formatting response
+    step4_fail = True
+    def buggy_build_checkout_response(chk):
+        nonlocal step4_fail
+        if step4_fail:
+            step4_fail = False
+            raise RuntimeError("Simulated transient failure building response after commit")
+        return main.CheckoutResponse(
+            checkout_id=chk.checkout_id,
+            operation_id=chk.operation_id,
+            status=chk.status,
+            order_id=chk.order_id,
+            total_amount=Decimal(str(chk.total_amount)),
+            items=[]
+        )
+    monkeypatch.setattr(main, "build_checkout_response", buggy_build_checkout_response)
+
+    ik = f"post-commit-fail-{uuid.uuid4().hex[:6]}"
+    headers = make_headers(user_id=user_id, idempotency_key=ik)
+    resp = client.post("/checkout", json={}, headers=headers)
+
+    # The request failed after commit with 500
+    assert resp.status_code == 500
+
+    # Verification requirements:
+    # 1. Exactly one order exists
+    orders = db.query(Order).filter(Order.user_id == user_id).all()
+    assert len(orders) == 1
+    committed_order_id = orders[0].order_id
+
+    # 2. Checkout remains RESERVED with the order_id
+    chk = db.query(Checkout).filter(Checkout.user_id == user_id, Checkout.idempotency_key == ik).first()
+    assert chk is not None
+    assert chk.status == "RESERVED"
+    assert chk.order_id == committed_order_id
+
+    # 3. The reservation remains ACTIVE: NO compensation release occurred!
+    assert len(release_calls) == 0, "Compensation release must NOT be invoked after successful commit!"
+
+    # 4. Retrying the same key returns the original order!
+    resp_retry = client.post("/checkout", json={}, headers=headers)
+    assert resp_retry.status_code in (200, 201)
+    data = resp_retry.json()
+    assert data["order_id"] == committed_order_id
+    assert data["status"] == "RESERVED"
+
+    # Exactly one order exists after retry
+    orders_after = db.query(Order).filter(Order.user_id == user_id).all()
+    assert len(orders_after) == 1
+
+
+# -----------------------------------------------------------------------------
+# 24. Finding 2: Product Service HTTP 500 error classification and recovery
+# -----------------------------------------------------------------------------
+def test_product_service_500_discovers_reservation_and_creates_order(monkeypatch, dedicated_user, test_db):
+    user_id = dedicated_user
+    db = test_db
+
+    cart = Cart(user_id=user_id)
+    db.add(cart)
+    db.flush()
+    db.add(CartItemModel(cart_id=cart.cart_id, product_id=1, quantity=1))
+    db.commit()
+
+    def mock_fetch(pid, rid, auth):
+        return {"price": "15.00", "name": "Item 1"}
+    monkeypatch.setattr(main, "fetch_product", mock_fetch)
+
+    # Product Service committed the reservation in its DB, but returned HTTP 500 during response delivery!
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+    committed_reservations = {}
+
+    def mock_reserve_500(op_id, items):
+        # Product Service committed the hold:
+        committed_reservations[op_id] = {
+            "status": "ACTIVE",
+            "operation_id": op_id,
+            "expires_at": future_ts,
+            "items": [{"product_id": it["product_id"], "quantity": it["quantity"]} for it in items]
+        }
+        # In reserve_inventory_internal, HTTP 500 returns ("UNKNOWN", None, "HTTP_500", "Internal Server Error", True)
+        return ("UNKNOWN", None, "HTTP_500", "Internal Server Error", True)
+    monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve_500)
+
+    # When get_reservation_internal is called during recovery, it finds the committed reservation
+    def mock_get_res(op_id):
+        if op_id in committed_reservations:
+            return ("ACTIVE", committed_reservations[op_id], False, False)
+        return ("NOT_FOUND", None, False, True)
+    monkeypatch.setattr(main, "get_reservation_internal", mock_get_res)
+
+    ik = f"http500-recover-{uuid.uuid4().hex[:6]}"
+    headers = make_headers(user_id=user_id, idempotency_key=ik)
+    resp = client.post("/checkout", json={}, headers=headers)
+
+    # Verification:
+    # 1. Checkout successfully discovers the original reservation via recovery and returns 201
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["status"] == "RESERVED"
+    assert data["order_id"] is not None
+
+    # 2. Exactly one order exists
+    orders = db.query(Order).filter(Order.user_id == user_id).all()
+    assert len(orders) == 1
+
+    # 3. Checkout row is RESERVED
+    chk = db.query(Checkout).filter(Checkout.user_id == user_id, Checkout.idempotency_key == ik).first()
+    assert chk.status == "RESERVED"
+    assert chk.order_id == data["order_id"]
+
+
+# -----------------------------------------------------------------------------
+# 25. Finding 3: Recheck expiration after acquiring finalization lock in normal checkout
+# -----------------------------------------------------------------------------
+def test_recheck_expiration_after_acquiring_finalization_lock_checkout(monkeypatch, dedicated_user, test_db):
+    user_id = dedicated_user
+    db = test_db
+
+    cart = Cart(user_id=user_id)
+    db.add(cart)
+    db.flush()
+    db.add(CartItemModel(cart_id=cart.cart_id, product_id=1, quantity=1))
+    db.commit()
+
+    def mock_fetch(pid, rid, auth):
+        return {"price": "10.00", "name": "Item 1"}
+    monkeypatch.setattr(main, "fetch_product", mock_fetch)
+
+    # Reservation returned ACTIVE with an expires_at in the near future (+2 seconds)
+    exp_time = datetime.now(timezone.utc) + timedelta(seconds=2)
+    def mock_reserve(op_id, items):
+        return ("ACTIVE", {"status": "ACTIVE", "operation_id": op_id, "expires_at": exp_time.isoformat()}, None, None, False)
+    monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
+
+    release_calls = []
+    def mock_release(op_id):
+        release_calls.append(op_id)
+        return True
+    monkeypatch.setattr(main, "release_reservation_internal", mock_release)
+
+    # Advance clock past expires_at when finalization lock is acquired
+    class MockDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return exp_time + timedelta(seconds=5)
+    monkeypatch.setattr(main, "datetime", MockDatetime)
+
+    ik = f"lock-exp-race-{uuid.uuid4().hex[:6]}"
+    headers = make_headers(user_id=user_id, idempotency_key=ik)
+    resp = client.post("/checkout", json={}, headers=headers)
+
+    assert resp.status_code == 400
+    assert resp.json()["detail"]["failure_code"] == "RESERVATION_EXPIRED"
+
+    # Verification:
+    # 1. No order was created!
+    orders = db.query(Order).filter(Order.user_id == user_id).all()
+    assert len(orders) == 0
+
+    # 2. Verifiable release was attempted outside database transaction
+    assert len(release_calls) == 1
+
+    # 3. Checkout recorded as FAILED with RESERVATION_EXPIRED
+    chk = db.query(Checkout).filter(Checkout.user_id == user_id, Checkout.idempotency_key == ik).first()
+    assert chk.status == "FAILED"
+    assert chk.failure_code == "RESERVATION_EXPIRED"
+    assert chk.order_id is None
+
+
+# -----------------------------------------------------------------------------
+# 26. Finding 3: Recheck expiration after acquiring finalization lock in recovery
+# -----------------------------------------------------------------------------
+def test_recheck_expiration_after_acquiring_finalization_lock_recovery(monkeypatch, dedicated_user, test_db):
+    user_id = dedicated_user
+    db = test_db
+
+    exp_time = datetime.now(timezone.utc) + timedelta(seconds=2)
+    op_id = f"test-recov-exp-{uuid.uuid4()}"
+    res_op = f"res_{op_id}"
+
+    chk = Checkout(
+        user_id=user_id,
+        operation_id=op_id,
+        idempotency_key=f"idem-recov-exp-{uuid.uuid4()}",
+        request_fingerprint="dummy",
+        reservation_op_id=res_op,
+        status="RESERVING",
+        total_amount=Decimal("10.00"),
+        items_snapshot=[{"product_id": 1, "quantity": 1, "unit_price": "10.00"}]
+    )
+    db.add(chk)
+    db.commit()
+
+    # Probing returns ACTIVE with exp_time
+    def mock_get_res(op_id):
+        return ("ACTIVE", {"status": "ACTIVE", "operation_id": op_id, "expires_at": exp_time.isoformat()}, False, False)
+    monkeypatch.setattr(main, "get_reservation_internal", mock_get_res)
+
+    release_calls = []
+    def mock_release(op_id):
+        release_calls.append(op_id)
+        return True
+    monkeypatch.setattr(main, "release_reservation_internal", mock_release)
+
+    # Time advances past expires_at while waiting for finalization lock in Phase C
+    class MockDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return exp_time + timedelta(seconds=5)
+    monkeypatch.setattr(main, "datetime", MockDatetime)
+
+    rec = recover_single_checkout(db, chk.checkout_id)
+
+    # Verification:
+    # 1. Checkout status transitioned to FAILED, RESERVATION_EXPIRED
+    assert rec.status == "FAILED"
+    assert rec.failure_code == "RESERVATION_EXPIRED"
+    assert rec.order_id is None
+
+    # 2. No order created
+    orders = db.query(Order).filter(Order.user_id == user_id).all()
+    assert len(orders) == 0
+
+    # 3. Release was called
+    assert len(release_calls) == 1
+
+
+# -----------------------------------------------------------------------------
+# 27. Finding 1: Ambiguous commit outcome inspects persisted state and avoids compensation
+# -----------------------------------------------------------------------------
+def test_ambiguous_commit_inspects_persisted_state_and_avoids_compensation(monkeypatch, dedicated_user, test_db):
+    user_id = dedicated_user
+    db = test_db
+
+    cart = Cart(user_id=user_id)
+    db.add(cart)
+    db.flush()
+    db.add(CartItemModel(cart_id=cart.cart_id, product_id=1, quantity=1))
+    db.commit()
+
+    def mock_fetch(pid, rid, auth):
+        return {"price": "10.00", "name": "Item 1"}
+    monkeypatch.setattr(main, "fetch_product", mock_fetch)
+
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+    def mock_reserve(op_id, items):
+        return ("ACTIVE", {"status": "ACTIVE", "operation_id": op_id, "expires_at": future_ts}, None, None, False)
+    monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
+
+    release_calls = []
+    def mock_release(op_id):
+        release_calls.append(op_id)
+        return True
+    monkeypatch.setattr(main, "release_reservation_internal", mock_release)
+
+    # Hook commit to succeed on the DB, but raise an exception simulating socket disconnect on return
+    orig_commit = Session.commit
+    simulated_dropped = False
+    def hooked_commit(self):
+        nonlocal simulated_dropped
+        has_new_order = any(isinstance(obj, Order) for obj in self.identity_map.values())
+        orig_commit(self)
+        if has_new_order and not simulated_dropped:
+            simulated_dropped = True
+            raise RuntimeError("Simulated network drop immediately following successful database commit")
+
+    monkeypatch.setattr(Session, "commit", hooked_commit)
+
+    ik = f"ambig-commit-{uuid.uuid4().hex[:6]}"
+    headers = make_headers(user_id=user_id, idempotency_key=ik)
+    resp = client.post("/checkout", json={}, headers=headers)
+
+    # Initial request returns 201 (recovered immediately) or 500 (transient post-commit error)
+    assert resp.status_code in (200, 201, 500)
+
+    # Verification:
+    # 1. Inspect persisted state confirmed order commit succeeded -> NO compensation was triggered!
+    assert len(release_calls) == 0
+
+    # 2. Exactly one order exists in DB
+    orders = db.query(Order).filter(Order.user_id == user_id).all()
+    assert len(orders) == 1
+    committed_order_id = orders[0].order_id
+
+    # 3. Checkout remains RESERVED with the order_id
+    chk = db.query(Checkout).filter(Checkout.user_id == user_id, Checkout.idempotency_key == ik).first()
+    assert chk.status == "RESERVED"
+    assert chk.order_id == committed_order_id
+
+    # 4. Retrying the same key returns the original order!
+    resp_retry = client.post("/checkout", json={}, headers=headers)
+    assert resp_retry.status_code in (200, 201)
+    data = resp_retry.json()
+    assert data["order_id"] == committed_order_id
+    assert data["status"] == "RESERVED"
+
+
