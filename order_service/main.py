@@ -584,7 +584,7 @@ def reconcile_and_recover_checkout(checkout_id: int, clear_cart: bool = False, d
             active_db.commit()
             raise HTTPException(status_code=404, detail="Checkout not found")
 
-        if chk.status in ("RESERVED", "FAILED", "CANCELLED"):
+        if chk.status in ("RESERVED", "FAILED", "CANCELLED") or chk.order_id is not None:
             active_db.commit()
             return chk
 
@@ -659,7 +659,9 @@ def reconcile_and_recover_checkout(checkout_id: int, clear_cart: bool = False, d
                     is_uncertain = True
 
         elif current_status == "COMPENSATION_REQUIRED":
-            released = release_reservation_internal(res_op_id)
+            # Ensure compensation cannot release a reservation belonging to an already-finalized order
+            if chk.order_id is None and chk.status != "RESERVED":
+                released = release_reservation_internal(res_op_id)
 
         # ---------------------------------------------------------------------
         # Phase C: Recheck state with row lock and finalize
@@ -670,7 +672,26 @@ def reconcile_and_recover_checkout(checkout_id: int, clear_cart: bool = False, d
             raise HTTPException(status_code=404, detail="Checkout not found")
 
         # Concurrent check: if another worker already finalized it
-        if chk.status in ("RESERVED", "FAILED", "CANCELLED"):
+        if chk.status in ("RESERVED", "FAILED", "CANCELLED") or chk.order_id is not None:
+            active_db.commit()
+            return chk
+
+        # Enforce strict state precedence:
+        # If checkout has entered compensation, it CANNOT transition to RESERVED!
+        if chk.status == "COMPENSATION_REQUIRED":
+            if not released and chk.order_id is None and chk.status != "RESERVED":
+                active_db.rollback()
+                released = release_reservation_internal(res_op_id)
+                chk = active_db.query(Checkout).filter(Checkout.checkout_id == checkout_id).with_for_update().first()
+                if not chk or chk.status in ("RESERVED", "FAILED", "CANCELLED") or chk.order_id is not None:
+                    active_db.commit()
+                    return chk
+
+            if released:
+                chk.status = "CANCELLED"
+            else:
+                chk.status = "COMPENSATION_REQUIRED"
+            chk.updated_at = datetime.now(timezone.utc)
             active_db.commit()
             return chk
 
@@ -692,15 +713,21 @@ def reconcile_and_recover_checkout(checkout_id: int, clear_cart: bool = False, d
                         lock_is_expired = True
 
                 if lock_is_expired:
-                    # Do not create order. End local transaction before contacting Product Service:
-                    active_db.rollback()
+                    # Mark COMPENSATION_REQUIRED before releasing lock to prevent concurrent finalization
+                    chk.status = "COMPENSATION_REQUIRED"
+                    chk.failure_code = "RESERVATION_EXPIRED"
+                    chk.failure_reason = "Reservation expired before checkout finalization could complete"
+                    chk.updated_at = datetime.now(timezone.utc)
+                    active_db.commit()
                     assert not active_db.in_transaction(), "Transaction open during recovery expiration release"
 
-                    released = release_reservation_internal(res_op_id)
+                    released = False
+                    if chk.status != "RESERVED" and chk.order_id is None:
+                        released = release_reservation_internal(res_op_id)
 
                     try:
                         chk = active_db.query(Checkout).filter(Checkout.checkout_id == checkout_id).with_for_update().first()
-                        if chk and chk.status not in ("RESERVED", "CANCELLED"):
+                        if chk and chk.status != "RESERVED" and chk.order_id is None:
                             if released:
                                 chk.status = "FAILED"
                                 chk.failure_code = "RESERVATION_EXPIRED"
@@ -759,12 +786,6 @@ def reconcile_and_recover_checkout(checkout_id: int, clear_cart: bool = False, d
                 # Outcome uncertain (timeout or service unavailable)
                 # Preserve UNKNOWN so subsequent recovery can reconcile!
                 chk.status = "UNKNOWN"
-
-        elif chk.status == "COMPENSATION_REQUIRED":
-            if released:
-                chk.status = "CANCELLED"
-            else:
-                chk.status = "COMPENSATION_REQUIRED"
 
         chk.updated_at = datetime.now(timezone.utc)
         active_db.commit()
@@ -926,6 +947,15 @@ def execute_checkout_orchestration(
                     status_code=status_code,
                     detail={
                         "message": "Checkout failed during resolution",
+                        "failure_code": resolved.failure_code,
+                        "failure_reason": resolved.failure_reason
+                    }
+                )
+            elif resolved.status == "CANCELLED":
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "Checkout previously cancelled",
                         "failure_code": resolved.failure_code,
                         "failure_reason": resolved.failure_reason
                     }
@@ -1117,12 +1147,41 @@ def execute_checkout_orchestration(
                 active_db.commit()
                 raise HTTPException(status_code=404, detail="Checkout not found")
 
-            # Check if concurrent recovery or process already finalized it
-            if chk.status in ("RESERVED", "FAILED", "CANCELLED"):
+            # Check if concurrent recovery or process already finalized it or initiated compensation
+            if chk.status in ("RESERVED", "FAILED", "CANCELLED", "COMPENSATION_REQUIRED"):
                 active_db.commit()
-                order_obj = active_db.query(Order).filter(Order.order_id == chk.order_id).first() if chk.order_id else None
-                active_db.commit()
-                return chk, order_obj
+                if chk.status == "RESERVED":
+                    order_obj = active_db.query(Order).filter(Order.order_id == chk.order_id).first() if chk.order_id else None
+                    active_db.commit()
+                    return chk, order_obj
+                elif chk.status == "COMPENSATION_REQUIRED":
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail={
+                            "message": "Checkout is currently undergoing compensation; cannot finalize order",
+                            "failure_code": chk.failure_code,
+                            "failure_reason": chk.failure_reason
+                        }
+                    )
+                elif chk.status == "CANCELLED":
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail={
+                            "message": "Checkout previously cancelled",
+                            "failure_code": chk.failure_code,
+                            "failure_reason": chk.failure_reason
+                        }
+                    )
+                elif chk.status == "FAILED":
+                    status_code = status.HTTP_409_CONFLICT if chk.failure_code == "CONFLICT" else status.HTTP_400_BAD_REQUEST
+                    raise HTTPException(
+                        status_code=status_code,
+                        detail={
+                            "message": "Checkout previously failed",
+                            "failure_code": chk.failure_code,
+                            "failure_reason": chk.failure_reason
+                        }
+                    )
 
             # -----------------------------------------------------------------
             # Step 2: RECHECK EXPIRATION AFTER ACQUIRING FINALIZATION LOCK!
@@ -1145,16 +1204,24 @@ def execute_checkout_orchestration(
 
             if is_expired:
                 # Do NOT create an order!
-                # End local transaction before contacting Product Service:
-                active_db.rollback()
+                # Transition to COMPENSATION_REQUIRED immediately under row lock to prevent any race!
+                chk.status = "COMPENSATION_REQUIRED"
+                chk.failure_code = "RESERVATION_EXPIRED"
+                chk.failure_reason = "Reservation expired before checkout finalization could complete"
+                chk.updated_at = datetime.now(timezone.utc)
+                active_db.commit()
                 assert not active_db.in_transaction(), "Transaction open during expiration release"
 
                 # Attempt verifiable release outside transaction:
-                released = release_reservation_internal(reservation_op_id)
+                # Compensation cannot release a reservation belonging to an already-finalized order
+                released = False
+                if chk.status != "RESERVED" and chk.order_id is None:
+                    released = release_reservation_internal(reservation_op_id)
 
                 try:
                     chk = active_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).with_for_update().first()
-                    if chk and chk.status not in ("RESERVED", "CANCELLED"):
+                    # Enforce strict state precedence: once compensation begins, checkout must terminate in non-successful state!
+                    if chk and chk.status != "RESERVED" and chk.order_id is None:
                         if released:
                             chk.status = "FAILED"
                             chk.failure_code = "RESERVATION_EXPIRED"
@@ -1192,8 +1259,22 @@ def execute_checkout_orchestration(
             # Step 3: Local order persistence (Pre-commit vs Post-commit separation)
             # -----------------------------------------------------------------
             committed_successfully = False
+            pre_commit_phase = True
             new_order = None
             try:
+                # Re-verify checkout state before assembling and committing order:
+                # Never finalize an order for a checkout that has entered compensation!
+                if chk.status in ("COMPENSATION_REQUIRED", "CANCELLED", "FAILED"):
+                    active_db.rollback()
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail={
+                            "message": "Checkout is in compensation or terminal failure; cannot finalize order",
+                            "failure_code": chk.failure_code,
+                            "failure_reason": chk.failure_reason
+                        }
+                    )
+
                 if not chk.order_id:
                     new_order = Order(
                         user_id=user_id,
@@ -1226,8 +1307,11 @@ def execute_checkout_orchestration(
 
                 chk.status = "RESERVED"
                 chk.updated_at = datetime.now(timezone.utc)
+                pre_commit_phase = False
                 active_db.commit()
                 committed_successfully = True
+            except HTTPException:
+                raise
             except Exception as e:
                 # Pre-commit failure or ambiguous commit outcome
                 try:
@@ -1235,24 +1319,72 @@ def execute_checkout_orchestration(
                 except Exception:
                     pass
 
-                # Inspect persisted checkout/order state for ambiguous commit outcomes
-                try:
-                    inspect_Session = sessionmaker(bind=active_db.get_bind())
-                    inspect_db = inspect_Session()
-                    try:
-                        persisted_chk = inspect_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).first()
-                        if persisted_chk and persisted_chk.status == "RESERVED" and persisted_chk.order_id:
-                            committed_successfully = True
-                    finally:
-                        inspect_db.close()
-                except Exception:
-                    pass
+                inspection_successful = False
+                commit_proven_failed = False
 
-                if not committed_successfully:
-                    # Genuinely a pre-commit persistence failure -> COMPENSATION REQUIRED!
+                if not pre_commit_phase:
+                    # Ambiguous commit outcome: commit() was invoked and raised an exception.
+                    # Inspect persisted checkout/order state via an independent database session.
+                    try:
+                        inspect_Session = sessionmaker(bind=active_db.get_bind())
+                        inspect_db = inspect_Session()
+                        try:
+                            persisted_chk = inspect_db.query(Checkout).filter(
+                                Checkout.checkout_id == created_checkout_id
+                            ).first()
+                            if persisted_chk:
+                                inspection_successful = True
+                                if persisted_chk.status == "RESERVED" and persisted_chk.order_id:
+                                    committed_successfully = True
+                                elif persisted_chk.status in ("INITIATED", "RESERVING", "UNKNOWN") and persisted_chk.order_id is None:
+                                    commit_proven_failed = True
+                        finally:
+                            inspect_db.close()
+                    except Exception as inspect_err:
+                        logger.warning(f"Ambiguous commit inspection failed: {inspect_err}")
+                        inspection_successful = False
+                else:
+                    # Exception occurred before active_db.commit() was ever called.
+                    # Transaction was definitely not committed to the database.
+                    commit_proven_failed = True
+
+                if committed_successfully:
+                    # Order commit was successfully persisted on the database!
+                    pass
+                elif not commit_proven_failed:
+                    # Ambiguous commit outcome: commit() was called, but inspection failed or could not establish state.
+                    # DO NOT assume transaction rolled back!
+                    # DO NOT release reservation!
+                    # DO NOT mark CANCELLED!
+                    # Preserve original checkout and reservation operation IDs.
+                    # Return retryable error without claiming cancellation.
+                    logger.warning(
+                        f"Ambiguous commit outcome for checkout {created_checkout_id}; inspection inconclusive. "
+                        f"Preserving reservation {reservation_op_id} and returning retryable error."
+                    )
                     try:
                         chk = active_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).with_for_update().first()
-                        if chk:
+                        if chk and chk.status not in ("RESERVED", "COMPENSATION_REQUIRED", "CANCELLED", "FAILED"):
+                            chk.status = "UNKNOWN"
+                            chk.failure_code = "AMBIGUOUS_COMMIT"
+                            chk.failure_reason = str(e)
+                            chk.updated_at = datetime.now(timezone.utc)
+                            active_db.commit()
+                    except Exception:
+                        try:
+                            active_db.rollback()
+                        except Exception:
+                            pass
+
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="Checkout commit outcome ambiguous; please retry with the same Idempotency-Key."
+                    )
+                else:
+                    # Genuinely a proven pre-commit or verified rolled-back persistence failure -> COMPENSATION REQUIRED!
+                    try:
+                        chk = active_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).with_for_update().first()
+                        if chk and chk.status != "RESERVED" and chk.order_id is None:
                             chk.status = "COMPENSATION_REQUIRED"
                             chk.failure_code = "ORDER_PERSISTENCE_FAILED"
                             chk.failure_reason = str(e)
@@ -1262,19 +1394,24 @@ def execute_checkout_orchestration(
                         active_db.rollback()
 
                     # Verifiable release outside transaction:
+                    # Ensure compensation cannot release a reservation belonging to an already-finalized order:
                     if active_db.in_transaction():
                         active_db.commit()
                     assert not active_db.in_transaction(), "Transaction open during compensation release"
-                    released = release_reservation_internal(reservation_op_id)
-                    if released:
-                        try:
-                            chk = active_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).with_for_update().first()
-                            if chk:
-                                chk.status = "CANCELLED"
-                                chk.updated_at = datetime.now(timezone.utc)
-                                active_db.commit()
-                        except Exception:
-                            active_db.rollback()
+
+                    released = False
+                    chk_check = active_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).first()
+                    if chk_check and chk_check.status != "RESERVED" and chk_check.order_id is None:
+                        released = release_reservation_internal(reservation_op_id)
+                        if released:
+                            try:
+                                chk = active_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).with_for_update().first()
+                                if chk and chk.status != "RESERVED" and chk.order_id is None:
+                                    chk.status = "CANCELLED"
+                                    chk.updated_at = datetime.now(timezone.utc)
+                                    active_db.commit()
+                            except Exception:
+                                active_db.rollback()
 
                     raise HTTPException(
                         status_code=500,

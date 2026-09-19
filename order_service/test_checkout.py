@@ -8,6 +8,7 @@ import pytest
 from decimal import Decimal
 from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
@@ -1359,5 +1360,300 @@ def test_ambiguous_commit_inspects_persisted_state_and_avoids_compensation(monke
     data = resp_retry.json()
     assert data["order_id"] == committed_order_id
     assert data["status"] == "RESERVED"
+
+
+def test_ambiguous_commit_with_failed_inspection_preserves_reservation_and_recovers_order(monkeypatch, dedicated_user, test_db):
+    """
+    Test Ambiguous Commit when independent inspection also fails:
+    DB commits order -> commit response lost -> inspection also fails ->
+    no reservation release occurs -> DB recovers -> retrying same key discovers
+    original order (exactly 1 order and 1 reservation).
+    """
+    user_id = dedicated_user
+    db = test_db
+
+    cart = Cart(user_id=user_id)
+    db.add(cart)
+    db.flush()
+    db.add(CartItemModel(cart_id=cart.cart_id, product_id=1, quantity=1))
+    db.commit()
+
+    def mock_fetch(pid, rid, auth):
+        return {"price": "10.00", "name": "Item 1"}
+    monkeypatch.setattr(main, "fetch_product", mock_fetch)
+
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+    def mock_reserve(op_id, items):
+        return ("ACTIVE", {"status": "ACTIVE", "operation_id": op_id, "expires_at": future_ts}, None, None, False)
+    monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
+
+    release_calls = []
+    def mock_release(op_id):
+        release_calls.append(op_id)
+        return True
+    monkeypatch.setattr(main, "release_reservation_internal", mock_release)
+
+    # Hook commit to succeed on DB, but raise exception simulating socket drop on return
+    orig_commit = Session.commit
+    simulated_dropped = False
+    def hooked_commit(self):
+        nonlocal simulated_dropped
+        has_new_order = any(isinstance(obj, Order) for obj in self.identity_map.values())
+        orig_commit(self)
+        if has_new_order and not simulated_dropped:
+            simulated_dropped = True
+            raise RuntimeError("Simulated network drop immediately following successful database commit")
+
+    monkeypatch.setattr(Session, "commit", hooked_commit)
+
+    # Hook sessionmaker to simulate inspection failure
+    orig_sessionmaker = main.sessionmaker
+    def failing_sessionmaker(*args, **kwargs):
+        factory = orig_sessionmaker(*args, **kwargs)
+        def make_session(*s_args, **s_kwargs):
+            sess = factory(*s_args, **s_kwargs)
+            orig_query = sess.query
+            def failing_query(*q_args, **q_kwargs):
+                raise RuntimeError("Simulated inspection database connection failure")
+            sess.query = failing_query
+            return sess
+        return make_session
+
+    monkeypatch.setattr(main, "sessionmaker", failing_sessionmaker)
+
+    ik = f"ambig-failed-inspect-{uuid.uuid4().hex[:6]}"
+    headers = make_headers(user_id=user_id, idempotency_key=ik)
+    resp = client.post("/checkout", json={}, headers=headers)
+
+    # Initial request must return 503 (ambiguous commit with inconclusive inspection)
+    assert resp.status_code == 503
+    assert "ambiguous" in resp.json()["detail"].lower()
+
+    # CRITICAL: No compensation release was triggered!
+    assert len(release_calls) == 0
+
+    # The order was actually committed to PostgreSQL
+    orders = db.query(Order).filter(Order.user_id == user_id).all()
+    assert len(orders) == 1
+    committed_order_id = orders[0].order_id
+
+    # Restore sessionmaker to simulate DB recovery
+    monkeypatch.setattr(main, "sessionmaker", orig_sessionmaker)
+
+    # Retrying the same key retrieves the original committed order
+    resp_retry = client.post("/checkout", json={}, headers=headers)
+    assert resp_retry.status_code in (200, 201)
+    data = resp_retry.json()
+    assert data["order_id"] == committed_order_id
+    assert data["status"] == "RESERVED"
+
+    # Exactly 1 order in DB and 0 release calls
+    assert len(release_calls) == 0
+    orders_final = db.query(Order).filter(Order.user_id == user_id).all()
+    assert len(orders_final) == 1
+
+
+def test_checkout_in_compensation_required_cannot_finalize_order(monkeypatch, dedicated_user, test_db):
+    """
+    Ensure a checkout undergoing compensation (COMPENSATION_REQUIRED) cannot
+    concurrently transition to an active or completed state (RESERVED),
+    and never creates an order.
+    """
+    user_id = dedicated_user
+    db = test_db
+
+    ik = f"comp-req-{uuid.uuid4().hex[:6]}"
+    res_op_id = f"res_chk_{uuid.uuid4()}"
+
+    chk = Checkout(
+        user_id=user_id,
+        operation_id=str(uuid.uuid4()),
+        idempotency_key=ik,
+        request_fingerprint="test-fp",
+        reservation_op_id=res_op_id,
+        items_snapshot=[{"product_id": 1, "quantity": 1, "price": "10.00"}],
+        total_amount=Decimal("10.00"),
+        status="COMPENSATION_REQUIRED",
+        failure_code="ORDER_PERSISTENCE_FAILED",
+        failure_reason="Simulated failure"
+    )
+    db.add(chk)
+    db.commit()
+
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+    def mock_reserve(op_id, items):
+        return ("ACTIVE", {"status": "ACTIVE", "operation_id": op_id, "expires_at": future_ts}, None, None, False)
+    monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
+
+    def mock_fetch(pid, rid, auth):
+        return {"price": "10.00", "name": "Item 1"}
+    monkeypatch.setattr(main, "fetch_product", mock_fetch)
+
+    # Attempt checkout on this key
+    headers = make_headers(user_id=user_id, idempotency_key=ik)
+    resp = client.post("/checkout", json={}, headers=headers)
+
+    # Must reject finalization and must NOT return 200/201
+    assert resp.status_code in (400, 409)
+
+    # Verify no order was created
+    orders = db.query(Order).filter(Order.user_id == user_id).all()
+    assert len(orders) == 0
+
+    # Checkout status must NOT be RESERVED
+    db.refresh(chk)
+    assert chk.status != "RESERVED"
+    assert chk.order_id is None
+
+
+def test_compensation_cannot_release_reservation_of_finalized_order(monkeypatch, dedicated_user, test_db):
+    """
+    Ensure compensation cannot release a reservation belonging to an already-finalized order (RESERVED).
+    """
+    user_id = dedicated_user
+    db = test_db
+
+    order = Order(
+        user_id=user_id,
+        status="Pending",
+        total_amount=Decimal("20.00")
+    )
+    db.add(order)
+    db.flush()
+
+    res_op_id = f"res_chk_{uuid.uuid4()}"
+    chk = Checkout(
+        user_id=user_id,
+        operation_id=str(uuid.uuid4()),
+        idempotency_key=f"finalized-{uuid.uuid4().hex[:6]}",
+        request_fingerprint="test-fp",
+        reservation_op_id=res_op_id,
+        items_snapshot=[{"product_id": 1, "quantity": 2, "price": "10.00"}],
+        total_amount=Decimal("20.00"),
+        status="RESERVED",
+        order_id=order.order_id
+    )
+    db.add(chk)
+    db.commit()
+
+    release_calls = []
+    def mock_release(op_id):
+        release_calls.append(op_id)
+        return True
+    monkeypatch.setattr(main, "release_reservation_internal", mock_release)
+
+    # Attempt recovery / compensation
+    recovered = main.reconcile_and_recover_checkout(chk.checkout_id, db=db)
+
+    # Must NOT release reservation
+    assert len(release_calls) == 0
+    assert recovered.status == "RESERVED"
+    assert recovered.order_id == order.order_id
+
+
+def test_concurrent_checkout_and_compensation_serialization(monkeypatch, dedicated_user, test_db):
+    """
+    Deterministic synchronization test:
+    Checkout and compensation execute concurrently.
+    When compensation begins, checkout row is locked/marked COMPENSATION_REQUIRED.
+    The checkout thread cannot finalize or create an order, and the compensating
+    state terminates safely in a non-successful state without split-brain.
+    """
+    import threading
+
+    user_id = dedicated_user
+    db = test_db
+
+    ik = f"concurrent-{uuid.uuid4().hex[:6]}"
+    res_op_id = f"res_chk_{uuid.uuid4()}"
+
+    chk = Checkout(
+        user_id=user_id,
+        operation_id=str(uuid.uuid4()),
+        idempotency_key=ik,
+        request_fingerprint="test-fp",
+        reservation_op_id=res_op_id,
+        items_snapshot=[{"product_id": 1, "quantity": 1, "price": "15.00"}],
+        total_amount=Decimal("15.00"),
+        status="RESERVING"
+    )
+    db.add(chk)
+    db.commit()
+    chk_id = chk.checkout_id
+
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+    def mock_reserve(op_id, items):
+        return ("ACTIVE", {"status": "ACTIVE", "operation_id": op_id, "expires_at": future_ts}, None, None, False)
+    monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
+
+    release_calls = []
+    def mock_release(op_id):
+        release_calls.append(op_id)
+        return True
+    monkeypatch.setattr(main, "release_reservation_internal", mock_release)
+
+    def mock_fetch(pid, rid, auth):
+        return {"price": "15.00", "name": "Item 1"}
+    monkeypatch.setattr(main, "fetch_product", mock_fetch)
+
+    barrier = threading.Barrier(2)
+    thread_errors = []
+
+    def thread_compensate():
+        comp_db = TestingSessionLocal()
+        try:
+            barrier.wait()
+            c = comp_db.query(Checkout).filter(Checkout.checkout_id == chk_id).with_for_update().first()
+            c.status = "COMPENSATION_REQUIRED"
+            c.failure_code = "SIMULATED_ABORT"
+            c.failure_reason = "Concurrent abort triggered compensation"
+            c.updated_at = datetime.now(timezone.utc)
+            comp_db.commit()
+        except Exception as e:
+            thread_errors.append(e)
+        finally:
+            comp_db.close()
+
+    def thread_finalize():
+        fin_db = TestingSessionLocal()
+        try:
+            barrier.wait()
+            # Brief delay to let compensate commit COMPENSATION_REQUIRED
+            time.sleep(0.05)
+            main.execute_checkout_orchestration(
+                user_id=user_id,
+                idempotency_key=ik,
+                request_fingerprint="test-fp",
+                candidate_items=[{"product_id": 1, "quantity": 1}],
+                clear_cart=False,
+                request_id="req-1",
+                db=fin_db
+            )
+        except HTTPException as e:
+            # Expected rejection
+            thread_errors.append(e)
+        except Exception as e:
+            thread_errors.append(e)
+        finally:
+            fin_db.close()
+
+    t1 = threading.Thread(target=thread_finalize)
+    t2 = threading.Thread(target=thread_compensate)
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+
+    # Verify:
+    # 1. No order was ever created
+    orders = db.query(Order).filter(Order.user_id == user_id).all()
+    assert len(orders) == 0
+
+    # 2. Checkout status is not RESERVED
+    db.expire_all()
+    chk_final = db.query(Checkout).filter(Checkout.checkout_id == chk_id).first()
+    assert chk_final.status in ("COMPENSATION_REQUIRED", "CANCELLED", "FAILED")
+    assert chk_final.order_id is None
+
 
 
