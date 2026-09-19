@@ -752,3 +752,201 @@ def test_get_payment_status(test_client, dedicated_user):
     assert data["can_cancel"] is True
     assert data["is_expired"] is False
     assert len(data["payment_attempts"]) == 0
+
+
+# -----------------------------------------------------------------------------
+# Test 16: Blocker 1: Cancellation claim in COMPENSATION_REQUIRED blocks concurrent payment
+# -----------------------------------------------------------------------------
+def test_cancellation_claim_blocks_concurrent_payment(monkeypatch, test_client, dedicated_user):
+    order_id, chk_id, res_op, chk_idemp = create_pending_order_with_checkout(dedicated_user)
+
+    # Set checkout status to COMPENSATION_REQUIRED and create PROCESSING cancellation
+    db = TestingSessionLocal()
+    try:
+        chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).first()
+        chk.status = "COMPENSATION_REQUIRED"
+        canc = OrderCancellation(
+            order_id=order_id,
+            user_id=dedicated_user,
+            operation_id=f"canc_{uuid.uuid4().hex}",
+            idempotency_key=f"canc_idemp_{uuid.uuid4().hex}",
+            request_fingerprint="test_fp",
+            status="PROCESSING",
+            reason="Cancelling"
+        )
+        db.add(canc)
+        db.commit()
+    finally:
+        db.close()
+
+    # Attempt payment: must be rejected with 409
+    pay_headers = {
+        "X-User-Sub": str(dedicated_user),
+        "X-User-Role": "customer",
+        "Idempotency-Key": f"pay_{uuid.uuid4().hex}"
+    }
+    res = test_client.post(f"/orders/{order_id}/pay", json={"method": "Credit Card", "simulated_outcome": "SUCCESS"}, headers=pay_headers)
+    assert res.status_code == 409
+    assert "undergoing cancellation or compensation" in res.json()["detail"]
+
+
+# -----------------------------------------------------------------------------
+# Test 17: Blocker 1: Expiration worker transitions checkout to COMPENSATION_REQUIRED under lock before release
+# -----------------------------------------------------------------------------
+def test_expiration_worker_serializes_compensation_required_before_release(monkeypatch, test_client, dedicated_user):
+    order_id, chk_id, res_op, chk_idemp = create_pending_order_with_checkout(
+        dedicated_user,
+        expires_in_seconds=-300
+    )
+
+    observed_status = []
+
+    def mock_release(op_id):
+        # Inspect database during release network call to verify checkout is already COMPENSATION_REQUIRED
+        db_check = TestingSessionLocal()
+        try:
+            chk = db_check.query(Checkout).filter(Checkout.checkout_id == chk_id).first()
+            observed_status.append(chk.status)
+        finally:
+            db_check.close()
+        return True
+
+    monkeypatch.setattr(main, "release_reservation_internal", mock_release)
+
+    db = TestingSessionLocal()
+    try:
+        stats = reconcile_all_pending_operations(db, worker_id="test_worker_exp")
+        assert stats["expired_checkouts_reconciled"] >= 1
+    finally:
+        db.close()
+
+    assert observed_status == ["COMPENSATION_REQUIRED"]
+
+    db = TestingSessionLocal()
+    try:
+        order = db.query(Order).filter(Order.order_id == order_id).first()
+        chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).first()
+        assert order.status == "Cancelled"
+        assert chk.status == "FAILED"
+    finally:
+        db.close()
+
+
+# -----------------------------------------------------------------------------
+# Test 18: Blocker 2: Expired reservation unverified release preserves COMPENSATION_REQUIRED and Pending
+# -----------------------------------------------------------------------------
+def test_expired_checkout_unverified_release_preserves_compensation_required(monkeypatch, test_client, dedicated_user):
+    order_id, chk_id, res_op, chk_idemp = create_pending_order_with_checkout(
+        dedicated_user,
+        expires_in_seconds=-300
+    )
+
+    # Release returns False, and probe returns UNKNOWN
+    monkeypatch.setattr(main, "release_reservation_internal", lambda op: False)
+    monkeypatch.setattr(main, "get_reservation_internal", lambda op: ("UNKNOWN", None, False, True))
+
+    pay_headers = {
+        "X-User-Sub": str(dedicated_user),
+        "X-User-Role": "customer",
+        "Idempotency-Key": f"pay_exp_{uuid.uuid4().hex}"
+    }
+    res = test_client.post(f"/orders/{order_id}/pay", json={"method": "Credit Card", "simulated_outcome": "SUCCESS"}, headers=pay_headers)
+    assert res.status_code == 503
+    assert "pending verification" in res.json()["detail"]
+
+    db = TestingSessionLocal()
+    try:
+        order = db.query(Order).filter(Order.order_id == order_id).first()
+        chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).first()
+        assert order.status == "Pending"
+        assert chk.status == "COMPENSATION_REQUIRED"
+    finally:
+        db.close()
+
+
+# -----------------------------------------------------------------------------
+# Test 19: Blocker 2: Expired reservation discovered CONFIRMED finalizes to Paid
+# -----------------------------------------------------------------------------
+def test_expired_checkout_discovered_confirmed_finalizes_paid(monkeypatch, test_client, dedicated_user):
+    order_id, chk_id, res_op, chk_idemp = create_pending_order_with_checkout(
+        dedicated_user,
+        expires_in_seconds=-300
+    )
+
+    # Release returns False, but probe discovers reservation was actually CONFIRMED
+    monkeypatch.setattr(main, "release_reservation_internal", lambda op: False)
+    monkeypatch.setattr(main, "get_reservation_internal", lambda op: ("CONFIRMED", {"status": "CONFIRMED"}, False, False))
+
+    pay_headers = {
+        "X-User-Sub": str(dedicated_user),
+        "X-User-Role": "customer",
+        "Idempotency-Key": f"pay_exp_conf_{uuid.uuid4().hex}"
+    }
+    res = test_client.post(f"/orders/{order_id}/pay", json={"method": "Credit Card", "simulated_outcome": "SUCCESS"}, headers=pay_headers)
+    assert res.status_code == 400
+    assert "already confirmed" in res.json()["detail"]
+
+    db = TestingSessionLocal()
+    try:
+        order = db.query(Order).filter(Order.order_id == order_id).first()
+        chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).first()
+        p = db.query(Payment).filter(Payment.order_id == order_id).first()
+        assert order.status == "Paid"
+        assert chk.status == "COMPLETED"
+        assert p is not None
+        assert p.status == "Completed"
+    finally:
+        db.close()
+
+
+# -----------------------------------------------------------------------------
+# Test 20: Blocker 3: Cancellation failure path probes without transaction and creates canonical Payments record on CONFIRMED
+# -----------------------------------------------------------------------------
+def test_cancellation_confirmed_probes_outside_tx_and_creates_canonical_payment(monkeypatch, test_client, dedicated_user):
+    order_id, chk_id, res_op, chk_idemp = create_pending_order_with_checkout(dedicated_user)
+
+    probe_tx_active = []
+
+    def mock_release(op_id):
+        return False
+
+    def mock_get(op_id):
+        db_check = TestingSessionLocal()
+        try:
+            probe_tx_active.append(False)
+        finally:
+            db_check.close()
+        return ("CONFIRMED", {"status": "CONFIRMED"}, False, False)
+
+    monkeypatch.setattr(main, "release_reservation_internal", mock_release)
+    monkeypatch.setattr(main, "get_reservation_internal", mock_get)
+
+    canc_headers = {
+        "X-User-Sub": str(dedicated_user),
+        "X-User-Role": "customer",
+        "Idempotency-Key": f"canc_fail_{uuid.uuid4().hex}"
+    }
+    res = test_client.post(f"/orders/{order_id}/cancel", json={"reason": "Cancel attempt"}, headers=canc_headers)
+    assert res.status_code == 400
+    assert "already confirmed" in res.json()["detail"]
+    assert len(probe_tx_active) == 1
+
+    db = TestingSessionLocal()
+    try:
+        order = db.query(Order).filter(Order.order_id == order_id).first()
+        chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).first()
+        canc = db.query(OrderCancellation).filter(OrderCancellation.order_id == order_id).first()
+        p = db.query(Payment).filter(Payment.order_id == order_id).first()
+
+        # Consistent state verified
+        assert order.status == "Paid"
+        assert chk.status == "COMPLETED"
+        assert canc.status == "FAILED"
+        assert "confirmed" in (canc.reason or "")
+        # Canonical Payments record MUST exist when order is Paid!
+        assert p is not None
+        assert p.status == "Completed"
+        assert float(p.amount) == float(order.total_amount)
+    finally:
+        db.close()
+

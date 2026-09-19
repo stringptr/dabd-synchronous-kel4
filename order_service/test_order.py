@@ -43,9 +43,22 @@ def setup_database():
 
     app.dependency_overrides[get_db] = override_get_db
     
-    yield
+    import order_service.main as main
+    main.breaker.close()
 
     with engine.begin() as conn:
+        conn.execute(text("DELETE FROM order_cancellations"))
+        conn.execute(text("DELETE FROM payment_attempts"))
+        conn.execute(text("DELETE FROM checkouts"))
+        conn.execute(text("DELETE FROM order_items WHERE order_id NOT IN (SELECT order_id FROM payments)"))
+        conn.execute(text("DELETE FROM orders WHERE order_id NOT IN (SELECT order_id FROM payments)"))
+
+    yield
+
+    main.breaker.close()
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM order_cancellations"))
+        conn.execute(text("DELETE FROM payment_attempts"))
         conn.execute(text("DELETE FROM checkouts"))
         conn.execute(text("DELETE FROM order_items WHERE order_id NOT IN (SELECT order_id FROM payments)"))
         conn.execute(text("DELETE FROM orders WHERE order_id NOT IN (SELECT order_id FROM payments)"))
