@@ -1656,4 +1656,245 @@ def test_concurrent_checkout_and_compensation_serialization(monkeypatch, dedicat
     assert chk_final.order_id is None
 
 
+# -----------------------------------------------------------------------------
+# 28. Defect 1: Ambiguous commit inspection seeing stale state preserves reservation
+# -----------------------------------------------------------------------------
+def test_ambiguous_commit_inspection_sees_old_checkout_state_preserves_reservation(monkeypatch, dedicated_user, test_db):
+    """
+    Defect 1: When an ambiguous commit occurs (commit() attempted but outcome uncertain),
+    an independent inspection seeing the old checkout state (e.g. RESERVING/UNKNOWN with order_id=None)
+    must NOT infer that rollback occurred.
+    It must preserve the reservation (0 releases), return a retryable error (503),
+    and on retry when connectivity/snapshot catches up, discover the original committed order.
+    """
+    user_id = dedicated_user
+    db = test_db
+
+    cart = Cart(user_id=user_id)
+    db.add(cart)
+    db.flush()
+    db.add(CartItemModel(cart_id=cart.cart_id, product_id=1, quantity=1))
+    db.commit()
+
+    def mock_fetch(pid, rid, auth):
+        return {"price": "10.00", "name": "Item 1"}
+    monkeypatch.setattr(main, "fetch_product", mock_fetch)
+
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+    def mock_reserve(op_id, items):
+        return ("ACTIVE", {"status": "ACTIVE", "operation_id": op_id, "expires_at": future_ts}, None, None, False)
+    monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
+
+    release_calls = []
+    def mock_release(op_id):
+        release_calls.append(op_id)
+        return True
+    monkeypatch.setattr(main, "release_reservation_internal", mock_release)
+
+    # Hook commit: succeeds on PostgreSQL, but raises exception simulating network drop on return
+    orig_commit = Session.commit
+    simulated_dropped = False
+    def hooked_commit(self):
+        nonlocal simulated_dropped
+        has_new_order = any(isinstance(obj, Order) for obj in self.identity_map.values())
+        orig_commit(self)
+        if has_new_order and not simulated_dropped:
+            simulated_dropped = True
+            raise RuntimeError("Simulated network drop immediately following successful database commit")
+
+    monkeypatch.setattr(Session, "commit", hooked_commit)
+
+    # Hook sessionmaker so the inspection session sees an old snapshot of Checkout: RESERVING with order_id=None
+    orig_sessionmaker = main.sessionmaker
+    def stale_inspection_sessionmaker(*args, **kwargs):
+        factory = orig_sessionmaker(*args, **kwargs)
+        def make_session(*s_args, **s_kwargs):
+            sess = factory(*s_args, **s_kwargs)
+            orig_query = sess.query
+            def stale_query(entity, *q_args, **q_kwargs):
+                query_obj = orig_query(entity, *q_args, **q_kwargs)
+                if entity is Checkout:
+                    orig_first = query_obj.first
+                    def stale_first():
+                        res = orig_first()
+                        if res:
+                            # Simulate stale read snapshot: status is RESERVING, order_id is None
+                            mock_stale = Checkout(
+                                checkout_id=res.checkout_id,
+                                user_id=res.user_id,
+                                operation_id=res.operation_id,
+                                idempotency_key=res.idempotency_key,
+                                request_fingerprint=res.request_fingerprint,
+                                reservation_op_id=res.reservation_op_id,
+                                status="RESERVING",
+                                order_id=None,
+                                total_amount=res.total_amount,
+                                items_snapshot=res.items_snapshot
+                            )
+                            return mock_stale
+                        return res
+                    query_obj.first = stale_first
+                return query_obj
+            sess.query = stale_query
+            return sess
+        return make_session
+
+    monkeypatch.setattr(main, "sessionmaker", stale_inspection_sessionmaker)
+
+    ik = f"ambig-stale-inspect-{uuid.uuid4().hex[:6]}"
+    headers = make_headers(user_id=user_id, idempotency_key=ik)
+    resp = client.post("/checkout", json={}, headers=headers)
+
+    # Must return 503 retryable error (NOT 500 compensation initiated, NOT 200)
+    assert resp.status_code == 503
+    assert "ambiguous" in resp.json()["detail"].lower()
+
+    # CRITICAL: No compensation release was triggered!
+    assert len(release_calls) == 0, f"Expected 0 release calls, got {len(release_calls)}"
+
+    # Check that in the database, the order actually was committed
+    orders = db.query(Order).filter(Order.user_id == user_id).all()
+    assert len(orders) == 1
+    committed_order_id = orders[0].order_id
+
+    # Restore sessionmaker so that the next request sees true DB state
+    monkeypatch.setattr(main, "sessionmaker", orig_sessionmaker)
+
+    # Retrying the same key returns the original committed order
+    resp_retry = client.post("/checkout", json={}, headers=headers)
+    assert resp_retry.status_code in (200, 201)
+    data = resp_retry.json()
+    assert data["order_id"] == committed_order_id
+    assert data["status"] == "RESERVED"
+
+    # Exactly 1 order in DB and still 0 release calls
+    assert len(release_calls) == 0
+    orders_final = db.query(Order).filter(Order.user_id == user_id).all()
+    assert len(orders_final) == 1
+
+
+# -----------------------------------------------------------------------------
+# 29. Defect 2: Compensation requires durable transition before release
+# -----------------------------------------------------------------------------
+def test_compensation_requires_durable_transition_before_release(monkeypatch, dedicated_user, test_db):
+    """
+    Defect 2: Enforce required sequence A-F in compensation:
+    If transitioning checkout to COMPENSATION_REQUIRED fails to commit locally,
+    release_reservation_internal MUST NOT be called.
+    """
+    user_id = dedicated_user
+    db = test_db
+
+    cart = Cart(user_id=user_id)
+    db.add(cart)
+    db.flush()
+    db.add(CartItemModel(cart_id=cart.cart_id, product_id=1, quantity=1))
+    db.commit()
+
+    def mock_fetch(pid, rid, auth):
+        return {"price": "10.00", "name": "Item 1"}
+    monkeypatch.setattr(main, "fetch_product", mock_fetch)
+
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+    def mock_reserve(op_id, items):
+        return ("ACTIVE", {"status": "ACTIVE", "operation_id": op_id, "expires_at": future_ts}, None, None, False)
+    monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
+
+    release_calls = []
+    def mock_release(op_id):
+        release_calls.append(op_id)
+        return True
+    monkeypatch.setattr(main, "release_reservation_internal", mock_release)
+
+    # Simulate pre-commit failure when adding Order
+    orig_add = Session.add
+    def failing_add(self, instance, *args, **kwargs):
+        if isinstance(instance, Order):
+            raise RuntimeError("Simulated pre-commit failure creating Order")
+        return orig_add(self, instance, *args, **kwargs)
+
+    # AND simulate failure when committing COMPENSATION_REQUIRED
+    orig_commit = Session.commit
+    def failing_commit(self):
+        for obj in self.identity_map.values():
+            if isinstance(obj, Checkout) and getattr(obj, "status", None) == "COMPENSATION_REQUIRED":
+                raise RuntimeError("Simulated failure committing COMPENSATION_REQUIRED")
+        return orig_commit(self)
+
+    monkeypatch.setattr(Session, "add", failing_add)
+    monkeypatch.setattr(Session, "commit", failing_commit)
+
+    ik = f"comp-fail-transition-{uuid.uuid4().hex[:6]}"
+    headers = make_headers(user_id=user_id, idempotency_key=ik)
+    resp = client.post("/checkout", json={}, headers=headers)
+
+    assert resp.status_code == 500
+    assert "compensation transition could not be committed" in resp.json()["detail"]
+
+    # CRITICAL: release was NOT called because transition could not be committed!
+    assert len(release_calls) == 0, f"Expected 0 release calls when transition commit fails, got {len(release_calls)}"
+
+
+# -----------------------------------------------------------------------------
+# 30. Defect 2: Compensation sequence A to F and assertion that no transaction is active
+# -----------------------------------------------------------------------------
+def test_compensation_sequence_a_to_f_and_no_transaction_open_at_release(monkeypatch, dedicated_user, test_db):
+    """
+    Defect 2: Verify sequence A-F when pre-commit failure occurs:
+    1. Checkout transitions to COMPENSATION_REQUIRED and commits.
+    2. release_reservation_internal is called with active_db.in_transaction() == False.
+    3. Final outcome CANCELLED is recorded.
+    """
+    user_id = dedicated_user
+    db = test_db
+
+    cart = Cart(user_id=user_id)
+    db.add(cart)
+    db.flush()
+    db.add(CartItemModel(cart_id=cart.cart_id, product_id=1, quantity=1))
+    db.commit()
+
+    def mock_fetch(pid, rid, auth):
+        return {"price": "10.00", "name": "Item 1"}
+    monkeypatch.setattr(main, "fetch_product", mock_fetch)
+
+    future_ts = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+    def mock_reserve(op_id, items):
+        return ("ACTIVE", {"status": "ACTIVE", "operation_id": op_id, "expires_at": future_ts}, None, None, False)
+    monkeypatch.setattr(main, "reserve_inventory_internal", mock_reserve)
+
+    release_calls = []
+    def mock_release(op_id):
+        release_calls.append(op_id)
+        return True
+    monkeypatch.setattr(main, "release_reservation_internal", mock_release)
+
+    # Inject pre-commit failure when adding Order
+    orig_add = Session.add
+    def failing_add(self, instance, *args, **kwargs):
+        if isinstance(instance, Order):
+            raise RuntimeError("Simulated pre-commit failure creating Order")
+        return orig_add(self, instance, *args, **kwargs)
+
+    monkeypatch.setattr(Session, "add", failing_add)
+
+    ik = f"comp-seq-af-{uuid.uuid4().hex[:6]}"
+    headers = make_headers(user_id=user_id, idempotency_key=ik)
+    resp = client.post("/checkout", json={}, headers=headers)
+
+    assert resp.status_code == 500
+    assert "inventory hold compensation initiated" in resp.json()["detail"]
+
+    # Release WAS called exactly once (with in_transaction assertion passing)
+    assert len(release_calls) == 1
+
+    # Checkout status was transitioned to CANCELLED
+    db.expire_all()
+    chk = db.query(Checkout).filter(Checkout.user_id == user_id, Checkout.idempotency_key == ik).first()
+    assert chk.status == "CANCELLED"
+    assert chk.failure_code == "ORDER_PERSISTENCE_FAILED"
+    assert chk.order_id is None
+
+
+
 

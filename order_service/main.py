@@ -579,7 +579,7 @@ def reconcile_and_recover_checkout(checkout_id: int, clear_cart: bool = False, d
         # ---------------------------------------------------------------------
         # Phase A: Inspect record state
         # ---------------------------------------------------------------------
-        chk = active_db.query(Checkout).filter(Checkout.checkout_id == checkout_id).first()
+        chk = active_db.query(Checkout).filter(Checkout.checkout_id == checkout_id).with_for_update().first()
         if not chk:
             active_db.commit()
             raise HTTPException(status_code=404, detail="Checkout not found")
@@ -659,9 +659,10 @@ def reconcile_and_recover_checkout(checkout_id: int, clear_cart: bool = False, d
                     is_uncertain = True
 
         elif current_status == "COMPENSATION_REQUIRED":
-            # Ensure compensation cannot release a reservation belonging to an already-finalized order
-            if chk.order_id is None and chk.status != "RESERVED":
-                released = release_reservation_internal(res_op_id)
+            if active_db.in_transaction():
+                active_db.commit()
+            assert not active_db.in_transaction(), "Database transaction active at compensation release network boundary"
+            released = release_reservation_internal(res_op_id)
 
         # ---------------------------------------------------------------------
         # Phase C: Recheck state with row lock and finalize
@@ -681,6 +682,7 @@ def reconcile_and_recover_checkout(checkout_id: int, clear_cart: bool = False, d
         if chk.status == "COMPENSATION_REQUIRED":
             if not released and chk.order_id is None and chk.status != "RESERVED":
                 active_db.rollback()
+                assert not active_db.in_transaction(), "Database transaction active at compensation release network boundary"
                 released = release_reservation_internal(res_op_id)
                 chk = active_db.query(Checkout).filter(Checkout.checkout_id == checkout_id).with_for_update().first()
                 if not chk or chk.status in ("RESERVED", "FAILED", "CANCELLED") or chk.order_id is not None:
@@ -713,21 +715,36 @@ def reconcile_and_recover_checkout(checkout_id: int, clear_cart: bool = False, d
                         lock_is_expired = True
 
                 if lock_is_expired:
-                    # Mark COMPENSATION_REQUIRED before releasing lock to prevent concurrent finalization
-                    chk.status = "COMPENSATION_REQUIRED"
-                    chk.failure_code = "RESERVATION_EXPIRED"
-                    chk.failure_reason = "Reservation expired before checkout finalization could complete"
-                    chk.updated_at = datetime.now(timezone.utc)
-                    active_db.commit()
-                    assert not active_db.in_transaction(), "Transaction open during recovery expiration release"
+                    # Required sequence:
+                    # A. Row lock is already held on chk
+                    # B. Verify no order has been finalized
+                    transitioned_to_comp = False
+                    if chk and chk.order_id is None and chk.status != "RESERVED":
+                        # C. Durably transition to COMPENSATION_REQUIRED
+                        chk.status = "COMPENSATION_REQUIRED"
+                        chk.failure_code = "RESERVATION_EXPIRED"
+                        chk.failure_reason = "Reservation expired before checkout finalization could complete"
+                        chk.updated_at = datetime.now(timezone.utc)
+                        # D. Commit local transaction
+                        active_db.commit()
+                        transitioned_to_comp = True
+                    else:
+                        active_db.rollback()
 
-                    released = False
-                    if chk.status != "RESERVED" and chk.order_id is None:
-                        released = release_reservation_internal(res_op_id)
+                    if not transitioned_to_comp:
+                        return chk
 
+                    # E. Call Product Service outside any local transaction
+                    if active_db.in_transaction():
+                        active_db.commit()
+                    assert not active_db.in_transaction(), "Database transaction active at compensation release network boundary"
+
+                    released = release_reservation_internal(res_op_id)
+
+                    # F. Open a new short transaction and record the verified outcome
                     try:
                         chk = active_db.query(Checkout).filter(Checkout.checkout_id == checkout_id).with_for_update().first()
-                        if chk and chk.status != "RESERVED" and chk.order_id is None:
+                        if chk and chk.status == "COMPENSATION_REQUIRED" and chk.order_id is None:
                             if released:
                                 chk.status = "FAILED"
                                 chk.failure_code = "RESERVATION_EXPIRED"
@@ -738,6 +755,8 @@ def reconcile_and_recover_checkout(checkout_id: int, clear_cart: bool = False, d
                                 chk.failure_reason = "Reservation expired before checkout finalization could complete; release pending confirmation"
                             chk.updated_at = datetime.now(timezone.utc)
                             active_db.commit()
+                        else:
+                            active_db.rollback()
                     except Exception:
                         active_db.rollback()
                     return chk
@@ -1204,24 +1223,45 @@ def execute_checkout_orchestration(
 
             if is_expired:
                 # Do NOT create an order!
-                # Transition to COMPENSATION_REQUIRED immediately under row lock to prevent any race!
-                chk.status = "COMPENSATION_REQUIRED"
-                chk.failure_code = "RESERVATION_EXPIRED"
-                chk.failure_reason = "Reservation expired before checkout finalization could complete"
-                chk.updated_at = datetime.now(timezone.utc)
-                active_db.commit()
-                assert not active_db.in_transaction(), "Transaction open during expiration release"
-
-                # Attempt verifiable release outside transaction:
-                # Compensation cannot release a reservation belonging to an already-finalized order
-                released = False
-                if chk.status != "RESERVED" and chk.order_id is None:
-                    released = release_reservation_internal(reservation_op_id)
-
+                # Required sequence:
+                # A. Row lock is already held on chk
+                # B. Verify no order has been finalized
+                transitioned_to_comp = False
                 try:
-                    chk = active_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).with_for_update().first()
-                    # Enforce strict state precedence: once compensation begins, checkout must terminate in non-successful state!
                     if chk and chk.status != "RESERVED" and chk.order_id is None:
+                        # C. Durably transition to COMPENSATION_REQUIRED
+                        chk.status = "COMPENSATION_REQUIRED"
+                        chk.failure_code = "RESERVATION_EXPIRED"
+                        chk.failure_reason = "Reservation expired before checkout finalization could complete"
+                        chk.updated_at = datetime.now(timezone.utc)
+                        # D. Commit local transaction
+                        active_db.commit()
+                        transitioned_to_comp = True
+                    else:
+                        active_db.rollback()
+                except Exception:
+                    active_db.rollback()
+                    transitioned_to_comp = False
+
+                if not transitioned_to_comp:
+                    raise HTTPException(
+                        status_code=500,
+                        detail="Reservation expired, but compensation status could not be durably recorded."
+                    )
+
+                # E. Call Product Service outside any local transaction
+                if active_db.in_transaction():
+                    active_db.commit()
+                assert not active_db.in_transaction(), "Database transaction active at compensation release network boundary"
+
+                released = release_reservation_internal(reservation_op_id)
+
+                # F. Open a new short transaction and record the verified outcome
+                try:
+                    chk = active_db.query(Checkout).filter(
+                        Checkout.checkout_id == created_checkout_id
+                    ).with_for_update().first()
+                    if chk and chk.status == "COMPENSATION_REQUIRED" and chk.order_id is None:
                         if released:
                             chk.status = "FAILED"
                             chk.failure_code = "RESERVATION_EXPIRED"
@@ -1233,6 +1273,8 @@ def execute_checkout_orchestration(
                             chk.failure_reason = "Reservation expired before checkout finalization could complete; release pending confirmation"
                         chk.updated_at = datetime.now(timezone.utc)
                         active_db.commit()
+                    else:
+                        active_db.rollback()
                 except Exception:
                     active_db.rollback()
 
@@ -1336,8 +1378,8 @@ def execute_checkout_orchestration(
                                 inspection_successful = True
                                 if persisted_chk.status == "RESERVED" and persisted_chk.order_id:
                                     committed_successfully = True
-                                elif persisted_chk.status in ("INITIATED", "RESERVING", "UNKNOWN") and persisted_chk.order_id is None:
-                                    commit_proven_failed = True
+                                # Note: finding RESERVING/UNKNOWN/order_id=None does NOT prove
+                                # rollback because the commit outcome is uncertain. Do NOT infer rollback!
                         finally:
                             inspect_db.close()
                     except Exception as inspect_err:
@@ -1381,7 +1423,8 @@ def execute_checkout_orchestration(
                         detail="Checkout commit outcome ambiguous; please retry with the same Idempotency-Key."
                     )
                 else:
-                    # Genuinely a proven pre-commit or verified rolled-back persistence failure -> COMPENSATION REQUIRED!
+                    # Genuinely a proven pre-commit failure -> COMPENSATION REQUIRED!
+                    transitioned_to_comp = False
                     try:
                         chk = active_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).with_for_update().first()
                         if chk and chk.status != "RESERVED" and chk.order_id is None:
@@ -1390,28 +1433,41 @@ def execute_checkout_orchestration(
                             chk.failure_reason = str(e)
                             chk.updated_at = datetime.now(timezone.utc)
                             active_db.commit()
+                            transitioned_to_comp = True
+                        else:
+                            active_db.rollback()
                     except Exception:
                         active_db.rollback()
+                        transitioned_to_comp = False
 
-                    # Verifiable release outside transaction:
-                    # Ensure compensation cannot release a reservation belonging to an already-finalized order:
+                    # If transition cannot be committed, do NOT issue release!
+                    if not transitioned_to_comp:
+                        raise HTTPException(
+                            status_code=500,
+                            detail="Checkout failed during order finalization; compensation transition could not be committed."
+                        )
+
+                    # E. Call Product Service outside any transaction
                     if active_db.in_transaction():
                         active_db.commit()
-                    assert not active_db.in_transaction(), "Transaction open during compensation release"
+                    assert not active_db.in_transaction(), "Database transaction active at compensation release network boundary"
 
-                    released = False
-                    chk_check = active_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).first()
-                    if chk_check and chk_check.status != "RESERVED" and chk_check.order_id is None:
-                        released = release_reservation_internal(reservation_op_id)
-                        if released:
-                            try:
-                                chk = active_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).with_for_update().first()
-                                if chk and chk.status != "RESERVED" and chk.order_id is None:
-                                    chk.status = "CANCELLED"
-                                    chk.updated_at = datetime.now(timezone.utc)
-                                    active_db.commit()
-                            except Exception:
-                                active_db.rollback()
+                    released = release_reservation_internal(reservation_op_id)
+
+                    # F. Open new short transaction and record verified outcome
+                    try:
+                        chk = active_db.query(Checkout).filter(Checkout.checkout_id == created_checkout_id).with_for_update().first()
+                        if chk and chk.status == "COMPENSATION_REQUIRED" and chk.order_id is None:
+                            if released:
+                                chk.status = "CANCELLED"
+                            else:
+                                chk.status = "COMPENSATION_REQUIRED"
+                            chk.updated_at = datetime.now(timezone.utc)
+                            active_db.commit()
+                        else:
+                            active_db.rollback()
+                    except Exception:
+                        active_db.rollback()
 
                     raise HTTPException(
                         status_code=500,
