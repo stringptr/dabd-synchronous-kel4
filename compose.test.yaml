@@ -41,8 +41,6 @@ services:
       stage2b-test-net:
         aliases:
           - product-service-1
-          - order-service
-          - frontend
     depends_on:
       test-postgres:
         condition: service_healthy
@@ -108,6 +106,47 @@ services:
       timeout: 3s
       retries: 10
 
+  test-order:
+    build:
+      context: ./order_service
+    image: order-service:latest
+    container_name: stage2b-test-order
+    environment:
+      - DB_HOST=test-postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=testpassword
+      - DB_NAME=test_db
+      - DB_PORT=5432
+      - PRODUCT_SERVICE_URL=http://test-nginx/api/products
+      - INTERNAL_API_KEY=testinternal
+    networks:
+      stage2b-test-net:
+        aliases:
+          - order-service
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  test-frontend:
+    build:
+      context: ./frontend
+    image: frontend:latest
+    container_name: stage2b-test-frontend
+    networks:
+      stage2b-test-net:
+        aliases:
+          - frontend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1/"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
   test-nginx:
     image: docker.io/nginx:1.31.4-alpine3.24
     container_name: stage2b-test-nginx
@@ -124,6 +163,10 @@ services:
         condition: service_healthy
       test-product-2:
         condition: service_healthy
+      test-order:
+        condition: service_healthy
+      test-frontend:
+        condition: service_healthy
 
 networks:
   stage2b-test-net:
@@ -131,4 +174,5 @@ networks:
 
 volumes:
   test_postgres_data:
+
 
