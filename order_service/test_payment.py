@@ -865,13 +865,33 @@ def test_expired_checkout_unverified_release_preserves_compensation_required(mon
 
 
 # -----------------------------------------------------------------------------
-# Test 19: Blocker 2: Expired reservation discovered CONFIRMED finalizes to Paid
+# Test 19: Blocker 2: Expired reservation discovered CONFIRMED finalizes eligible payment to Paid
 # -----------------------------------------------------------------------------
 def test_expired_checkout_discovered_confirmed_finalizes_paid(monkeypatch, test_client, dedicated_user):
     order_id, chk_id, res_op, chk_idemp = create_pending_order_with_checkout(
         dedicated_user,
         expires_in_seconds=-300
     )
+
+    # Set up an eligible in-flight attempt (e.g. UNKNOWN) that caused the CONFIRMED hold
+    db = TestingSessionLocal()
+    try:
+        att = PaymentAttempt(
+            order_id=order_id,
+            user_id=dedicated_user,
+            operation_id=f"pay_{uuid.uuid4().hex}",
+            idempotency_key=f"idemp_orig_{uuid.uuid4().hex}",
+            request_fingerprint="fp_orig",
+            amount=Decimal("100.00"),
+            method="Credit Card",
+            simulated_outcome="TIMEOUT",
+            status="UNKNOWN",
+            stage="CONFIRM_IN_FLIGHT"
+        )
+        db.add(att)
+        db.commit()
+    finally:
+        db.close()
 
     # Release returns False, but probe discovers reservation was actually CONFIRMED
     monkeypatch.setattr(main, "release_reservation_internal", lambda op: False)
@@ -884,17 +904,20 @@ def test_expired_checkout_discovered_confirmed_finalizes_paid(monkeypatch, test_
     }
     res = test_client.post(f"/orders/{order_id}/pay", json={"method": "Credit Card", "simulated_outcome": "SUCCESS"}, headers=pay_headers)
     assert res.status_code == 400
-    assert "already confirmed" in res.json()["detail"]
+    assert ("already confirmed" in res.json()["detail"] or "paid by another" in res.json()["detail"])
 
     db = TestingSessionLocal()
     try:
         order = db.query(Order).filter(Order.order_id == order_id).first()
         chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).first()
         p = db.query(Payment).filter(Payment.order_id == order_id).first()
+        pa = db.query(PaymentAttempt).filter(PaymentAttempt.order_id == order_id).first()
         assert order.status == "Paid"
         assert chk.status == "COMPLETED"
+        assert pa.status == "SUCCEEDED"
         assert p is not None
         assert p.status == "Completed"
+        assert p.method == "Credit Card"
     finally:
         db.close()
 
@@ -904,6 +927,38 @@ def test_expired_checkout_discovered_confirmed_finalizes_paid(monkeypatch, test_
 # -----------------------------------------------------------------------------
 def test_cancellation_confirmed_probes_outside_tx_and_creates_canonical_payment(monkeypatch, test_client, dedicated_user):
     order_id, chk_id, res_op, chk_idemp = create_pending_order_with_checkout(dedicated_user)
+
+    # Set up an eligible in-flight attempt (e.g. UNKNOWN) that caused the CONFIRMED hold
+    canc_idemp = f"canc_fail_{uuid.uuid4().hex}"
+    canc_fp = main.compute_cancellation_fingerprint(order_id, "Cancel attempt")
+    db = TestingSessionLocal()
+    try:
+        att = PaymentAttempt(
+            order_id=order_id,
+            user_id=dedicated_user,
+            operation_id=f"pay_{uuid.uuid4().hex}",
+            idempotency_key=f"idemp_orig_{uuid.uuid4().hex}",
+            request_fingerprint="fp_orig",
+            amount=Decimal("100.00"),
+            method="Bank Transfer",
+            simulated_outcome="TIMEOUT",
+            status="UNKNOWN",
+            stage="CONFIRM_IN_FLIGHT"
+        )
+        db.add(att)
+        canc = OrderCancellation(
+            order_id=order_id,
+            user_id=dedicated_user,
+            operation_id=f"canc_{uuid.uuid4().hex}",
+            idempotency_key=canc_idemp,
+            request_fingerprint=canc_fp,
+            status="PROCESSING",
+            reason="Cancel attempt"
+        )
+        db.add(canc)
+        db.commit()
+    finally:
+        db.close()
 
     probe_tx_active = []
 
@@ -924,11 +979,11 @@ def test_cancellation_confirmed_probes_outside_tx_and_creates_canonical_payment(
     canc_headers = {
         "X-User-Sub": str(dedicated_user),
         "X-User-Role": "customer",
-        "Idempotency-Key": f"canc_fail_{uuid.uuid4().hex}"
+        "Idempotency-Key": canc_idemp
     }
     res = test_client.post(f"/orders/{order_id}/cancel", json={"reason": "Cancel attempt"}, headers=canc_headers)
     assert res.status_code == 400
-    assert "already confirmed" in res.json()["detail"]
+    assert ("already confirmed" in res.json()["detail"] or "payment was confirmed" in res.json()["detail"])
     assert len(probe_tx_active) == 1
 
     db = TestingSessionLocal()
@@ -937,16 +992,220 @@ def test_cancellation_confirmed_probes_outside_tx_and_creates_canonical_payment(
         chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).first()
         canc = db.query(OrderCancellation).filter(OrderCancellation.order_id == order_id).first()
         p = db.query(Payment).filter(Payment.order_id == order_id).first()
+        pa = db.query(PaymentAttempt).filter(PaymentAttempt.order_id == order_id).first()
 
         # Consistent state verified
         assert order.status == "Paid"
         assert chk.status == "COMPLETED"
+        assert pa.status == "SUCCEEDED"
         assert canc.status == "FAILED"
         assert "confirmed" in (canc.reason or "")
-        # Canonical Payments record MUST exist when order is Paid!
+        # Canonical Payments record MUST exist when order is Paid using attempt's method!
         assert p is not None
         assert p.status == "Completed"
+        assert p.method == "Bank Transfer"
         assert float(p.amount) == float(order.total_amount)
+    finally:
+        db.close()
+
+
+# -----------------------------------------------------------------------------
+# Test 21: Audit Integrity: CONFIRMED reservation with no payment attempt preserves discrepancy
+# -----------------------------------------------------------------------------
+def test_confirmed_reservation_with_no_payment_attempt_preserves_discrepancy(monkeypatch, test_client, dedicated_user):
+    order_id, chk_id, res_op, chk_idemp = create_pending_order_with_checkout(dedicated_user)
+
+    # Inventory service reports CONFIRMED, but release returned False
+    monkeypatch.setattr(main, "release_reservation_internal", lambda op: False)
+    monkeypatch.setattr(main, "get_reservation_internal", lambda op: ("CONFIRMED", {"status": "CONFIRMED"}, False, False))
+
+    canc_headers = {
+        "X-User-Sub": str(dedicated_user),
+        "X-User-Role": "customer",
+        "Idempotency-Key": f"canc_disc_{uuid.uuid4().hex}"
+    }
+    # Cancellation probe discovers CONFIRMED with no payment attempts
+    res = test_client.post(f"/orders/{order_id}/cancel", json={"reason": "Cancel attempt"}, headers=canc_headers)
+    assert res.status_code == 409
+    assert "preserved for review" in res.json()["detail"]
+
+    db = TestingSessionLocal()
+    try:
+        order = db.query(Order).filter(Order.order_id == order_id).first()
+        chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).first()
+        canc = db.query(OrderCancellation).filter(OrderCancellation.order_id == order_id).first()
+        p = db.query(Payment).filter(Payment.order_id == order_id).first()
+        attempts = db.query(PaymentAttempt).filter(PaymentAttempt.order_id == order_id).all()
+
+        # Discrepancy is preserved: NO fake payment, NO order marked Paid, NOT cancelled
+        assert order.status == "Pending"
+        assert chk.status == "COMPENSATION_REQUIRED"
+        assert chk.failure_code == "CONFIRMED_WITHOUT_ELIGIBLE_PAYMENT"
+        assert p is None
+        assert len(attempts) == 0
+        assert canc.status == "FAILED"
+        assert "no eligible payment attempt" in (canc.reason or "")
+    finally:
+        db.close()
+
+
+# -----------------------------------------------------------------------------
+# Test 22: Audit Integrity: CONFIRMED reservation with only declined attempt preserves discrepancy
+# -----------------------------------------------------------------------------
+def test_confirmed_reservation_with_only_declined_attempt_preserves_discrepancy(monkeypatch, dedicated_user):
+    order_id, chk_id, res_op, chk_idemp = create_pending_order_with_checkout(
+        dedicated_user,
+        expires_in_seconds=-300
+    )
+
+    # Insert a definitively DECLINED payment attempt
+    db = TestingSessionLocal()
+    try:
+        declined_att = PaymentAttempt(
+            order_id=order_id,
+            user_id=dedicated_user,
+            operation_id=f"pay_dec_{uuid.uuid4().hex}",
+            idempotency_key=f"idemp_dec_{uuid.uuid4().hex}",
+            request_fingerprint="fp_dec",
+            amount=Decimal("100.00"),
+            method="Credit Card",
+            simulated_outcome="DECLINE",
+            status="FAILED",
+            stage="SIMULATED_DECLINE",
+            failure_code="PAYMENT_DECLINED",
+            failure_reason="Simulated payment declined by card issuer"
+        )
+        db.add(declined_att)
+        db.commit()
+    finally:
+        db.close()
+
+    # Inventory service reports CONFIRMED, but release fails
+    monkeypatch.setattr(main, "release_reservation_internal", lambda op: False)
+    monkeypatch.setattr(main, "get_reservation_internal", lambda op: ("CONFIRMED", {"status": "CONFIRMED"}, False, False))
+
+    # Autonomous recovery sweeps the expired checkout
+    db = TestingSessionLocal()
+    try:
+        stats = reconcile_all_pending_operations(db, worker_id="test-audit-worker")
+        assert stats["expired_checkouts_reconciled"] == 1
+
+        order = db.query(Order).filter(Order.order_id == order_id).first()
+        chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).first()
+        p = db.query(Payment).filter(Payment.order_id == order_id).first()
+        att = db.query(PaymentAttempt).filter(PaymentAttempt.order_id == order_id).first()
+
+        # Declined attempt must NEVER be converted to SUCCEEDED!
+        assert att.status == "FAILED"
+        assert att.failure_code == "PAYMENT_DECLINED"
+        # Order must remain Pending, NO Payment record created
+        assert order.status == "Pending"
+        assert chk.status == "COMPENSATION_REQUIRED"
+        assert chk.failure_code == "CONFIRMED_WITHOUT_ELIGIBLE_PAYMENT"
+        assert p is None
+    finally:
+        db.close()
+
+
+# -----------------------------------------------------------------------------
+# Test 23: Audit Integrity: CONFIRMED reservation with eligible UNKNOWN attempt finalizes paid
+# -----------------------------------------------------------------------------
+def test_confirmed_reservation_with_eligible_unknown_attempt_finalizes_paid(monkeypatch, dedicated_user):
+    order_id, chk_id, res_op, chk_idemp = create_pending_order_with_checkout(
+        dedicated_user,
+        expires_in_seconds=-300
+    )
+
+    # Insert an eligible in-flight UNKNOWN payment attempt
+    db = TestingSessionLocal()
+    try:
+        unknown_att = PaymentAttempt(
+            order_id=order_id,
+            user_id=dedicated_user,
+            operation_id=f"pay_unk_{uuid.uuid4().hex}",
+            idempotency_key=f"idemp_unk_{uuid.uuid4().hex}",
+            request_fingerprint="fp_unk",
+            amount=Decimal("100.00"),
+            method="PayPal",
+            simulated_outcome="TIMEOUT",
+            status="UNKNOWN",
+            stage="CONFIRM_IN_FLIGHT",
+            failure_code="SIMULATED_TIMEOUT",
+            failure_reason="Simulated payment gateway timeout"
+        )
+        db.add(unknown_att)
+        db.commit()
+    finally:
+        db.close()
+
+    # Inventory service reports CONFIRMED
+    monkeypatch.setattr(main, "release_reservation_internal", lambda op: False)
+    monkeypatch.setattr(main, "get_reservation_internal", lambda op: ("CONFIRMED", {"status": "CONFIRMED"}, False, False))
+
+    # Autonomous recovery runs
+    db = TestingSessionLocal()
+    try:
+        stats = reconcile_all_pending_operations(db, worker_id="test-audit-worker")
+        assert stats["payment_attempts_reconciled"] == 1
+
+        order = db.query(Order).filter(Order.order_id == order_id).first()
+        chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).first()
+        p = db.query(Payment).filter(Payment.order_id == order_id).first()
+        att = db.query(PaymentAttempt).filter(PaymentAttempt.order_id == order_id).first()
+
+        # Eligible UNKNOWN attempt is finalized to SUCCEEDED
+        assert att.status == "SUCCEEDED"
+        assert att.stage == "FINALIZED"
+        assert order.status == "Paid"
+        assert chk.status == "COMPLETED"
+        # Canonical Payments record created with attempt's method
+        assert p is not None
+        assert p.status == "Completed"
+        assert p.method == "PayPal"
+        assert p.amount == Decimal("100.00")
+    finally:
+        db.close()
+
+
+# -----------------------------------------------------------------------------
+# Test 24: Audit Integrity: Normal successful payment remains unchanged
+# -----------------------------------------------------------------------------
+def test_normal_successful_payment_unchanged(monkeypatch, test_client, dedicated_user):
+    order_id, chk_id, res_op, chk_idemp = create_pending_order_with_checkout(dedicated_user)
+
+    monkeypatch.setattr(main, "confirm_reservation_internal", lambda op: ("CONFIRMED", {"status": "CONFIRMED"}, None, None, False))
+
+    pay_idemp = f"pay_norm_{uuid.uuid4().hex}"
+    headers = {
+        "X-User-Sub": str(dedicated_user),
+        "X-User-Role": "customer",
+        "Idempotency-Key": pay_idemp
+    }
+    payload = {
+        "method": "Gift Card",
+        "simulated_outcome": "SUCCESS"
+    }
+
+    res = test_client.post(f"/orders/{order_id}/pay", json=payload, headers=headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "SUCCEEDED"
+    assert data["order_id"] == order_id
+
+    db = TestingSessionLocal()
+    try:
+        order = db.query(Order).filter(Order.order_id == order_id).first()
+        chk = db.query(Checkout).filter(Checkout.checkout_id == chk_id).first()
+        p = db.query(Payment).filter(Payment.order_id == order_id).first()
+        pa = db.query(PaymentAttempt).filter(PaymentAttempt.order_id == order_id).first()
+
+        assert order.status == "Paid"
+        assert chk.status == "COMPLETED"
+        assert pa.status == "SUCCEEDED"
+        assert p is not None
+        assert p.status == "Completed"
+        assert p.method == "Gift Card"
+        assert p.amount == Decimal("100.00")
     finally:
         db.close()
 

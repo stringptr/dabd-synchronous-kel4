@@ -2015,6 +2015,51 @@ def get_orders(db: Session = Depends(get_db), user=Depends(get_current_user)):
 # Stage 2D: Payment, Order Cancellation, Expiration, and Autonomous Recovery
 # =============================================================================
 
+def is_attempt_eligible_for_success(attempt: Optional[PaymentAttempt]) -> bool:
+    """
+    Determines whether a payment attempt is eligible to be finalized as SUCCEEDED.
+    Definitively declined, failed, or expired attempts are NEVER eligible.
+    """
+    if not attempt:
+        return False
+    if attempt.status == "SUCCEEDED":
+        return True
+    if attempt.status in ("FAILED", "EXPIRED"):
+        return False
+    if attempt.simulated_outcome == "DECLINE":
+        return False
+    if attempt.stage == "SIMULATED_DECLINE" or attempt.failure_code == "PAYMENT_DECLINED":
+        return False
+    return attempt.status in ("INITIATED", "PROCESSING", "CONFIRMING", "UNKNOWN")
+
+def find_eligible_payment_attempt(db: Session, order_id: int) -> Optional[PaymentAttempt]:
+    """
+    Finds the specific eligible payment attempt for an order.
+    Returns already SUCCEEDED attempts first (idempotent replay),
+    or resolving in-flight attempts with non-declined outcomes.
+    Never returns definitively declined or failed attempts.
+    """
+    # 1. Check for already SUCCEEDED attempt
+    succeeded = db.query(PaymentAttempt).filter(
+        PaymentAttempt.order_id == order_id,
+        PaymentAttempt.status == "SUCCEEDED"
+    ).order_by(PaymentAttempt.attempt_id.desc()).with_for_update().first()
+    if succeeded:
+        return succeeded
+
+    # 2. Check for in-flight / unresolved eligible attempt
+    candidates = db.query(PaymentAttempt).filter(
+        PaymentAttempt.order_id == order_id,
+        PaymentAttempt.status.in_(("CONFIRMING", "PROCESSING", "UNKNOWN", "INITIATED")),
+        PaymentAttempt.simulated_outcome != "DECLINE"
+    ).order_by(PaymentAttempt.attempt_id.desc()).with_for_update().all()
+
+    for cand in candidates:
+        if is_attempt_eligible_for_success(cand):
+            return cand
+
+    return None
+
 def finalize_order_payment(
     db: Session,
     order: Order,
@@ -2023,38 +2068,64 @@ def finalize_order_payment(
     method: Optional[str] = None,
     amount: Optional[Decimal] = None,
     now_ts: Optional[datetime] = None
-) -> None:
+) -> bool:
     """
-    Shared idempotent payment-finalization routine.
-    Ensures PaymentAttempt, canonical Payments record, Order (Paid), and Checkout (COMPLETED)
-    are updated consistently in the caller's transaction.
-    Never marks Order as Paid without writing or ensuring the canonical Payments record.
+    Shared idempotent payment-finalization routine with strict payment audit integrity:
+    1. Finds the specific eligible payment attempt (or validates the passed attempt).
+    2. Never fabricates a completed payment or defaults to 'Credit Card' when no valid payment attempt exists.
+    3. Never converts a definitively declined or failed attempt into SUCCEEDED.
+    4. If inventory is CONFIRMED but no eligible attempt exists, preserves the discrepancy
+       (chk.status = COMPENSATION_REQUIRED, failure_code = CONFIRMED_WITHOUT_ELIGIBLE_PAYMENT)
+       without releasing confirmed inventory or claiming payment success, returning False.
+    5. Returns True if payment was successfully and durably finalized.
     """
     if now_ts is None:
         now_ts = datetime.now(timezone.utc)
 
-    if attempt:
-        attempt.status = "SUCCEEDED"
-        attempt.stage = "FINALIZED"
-        attempt.lease_worker_id = None
-        attempt.lease_expires_at = None
-        attempt.failure_code = None
-        attempt.failure_reason = None
-        attempt.updated_at = now_ts
+    # 1. Resolve specific eligible attempt
+    eligible_attempt = attempt if is_attempt_eligible_for_success(attempt) else find_eligible_payment_attempt(db, order.order_id)
 
+    if not eligible_attempt:
+        # Audit Discrepancy: CONFIRMED inventory without an eligible payment attempt
+        if chk:
+            chk.status = "COMPENSATION_REQUIRED"
+            chk.failure_code = "CONFIRMED_WITHOUT_ELIGIBLE_PAYMENT"
+            chk.failure_reason = "Inventory reservation is confirmed on inventory service but no eligible payment attempt exists"
+            chk.lease_worker_id = None
+            chk.lease_expires_at = None
+            chk.updated_at = now_ts
+
+        logger.warning(
+            f"Payment audit discrepancy: order {order.order_id} has confirmed inventory hold "
+            f"but lacks an eligible payment attempt. Preserved for review without marking Paid or releasing inventory."
+        )
+        return False
+
+    # 2. Finalize the specific eligible payment attempt
+    eligible_attempt.status = "SUCCEEDED"
+    eligible_attempt.stage = "FINALIZED"
+    eligible_attempt.lease_worker_id = None
+    eligible_attempt.lease_expires_at = None
+    eligible_attempt.failure_code = None
+    eligible_attempt.failure_reason = None
+    eligible_attempt.updated_at = now_ts
+
+    # 3. Transition Order and Checkout
     order.status = "Paid"
 
     if chk:
         chk.status = "COMPLETED"
         chk.lease_worker_id = None
         chk.lease_expires_at = None
+        chk.failure_code = None
+        chk.failure_reason = None
         chk.updated_at = now_ts
 
-    # Ensure canonical Payments record exists
+    # 4. Ensure canonical Payments record exists (never fabricates without eligible attempt, uses attempt's method)
     existing_p = db.query(Payment).filter(Payment.order_id == order.order_id).first()
     if not existing_p:
-        pay_method = method or (attempt.method if attempt else None) or "Credit Card"
-        pay_amount = amount if amount is not None else (attempt.amount if attempt else order.total_amount)
+        pay_method = method or eligible_attempt.method
+        pay_amount = amount if amount is not None else (eligible_attempt.amount if eligible_attempt.amount is not None else order.total_amount)
         db.add(Payment(
             order_id=order.order_id,
             amount=pay_amount,
@@ -2063,12 +2134,14 @@ def finalize_order_payment(
             payment_date=now_ts
         ))
 
-    # Invalidate any in-flight / pending cancellation
+    # 5. Invalidate any in-flight / pending cancellation
     canc = db.query(OrderCancellation).filter(OrderCancellation.order_id == order.order_id).first()
     if canc and canc.status in ("PROCESSING", "UNKNOWN"):
         canc.status = "FAILED"
-        canc.reason = "Cannot cancel order: inventory reservation is already confirmed"
+        canc.reason = "Cannot cancel order: inventory reservation is already confirmed and paid"
         canc.updated_at = now_ts
+
+    return True
 
 def reconcile_single_payment_attempt(attempt_id: int, db: Session) -> Optional[PaymentAttempt]:
     """
@@ -2145,7 +2218,16 @@ def reconcile_single_payment_attempt(attempt_id: int, db: Session) -> Optional[P
         return attempt
 
     if probe_status == "CONFIRMED":
-        finalize_order_payment(db, order=order, chk=chk, attempt=attempt, method=method, amount=amount, now_ts=now_ts)
+        paid_ok = finalize_order_payment(db, order=order, chk=chk, attempt=attempt, method=method, amount=amount, now_ts=now_ts)
+        if not paid_ok:
+            if attempt.status in ("INITIATED", "PROCESSING", "CONFIRMING"):
+                attempt.status = "UNKNOWN"
+            attempt.failure_code = "CONFIRMED_WITHOUT_ELIGIBLE_PAYMENT"
+            attempt.failure_reason = "Inventory reservation is confirmed but no eligible payment attempt exists"
+            attempt.reconcile_attempts += 1
+            delay = min(300, 2 ** attempt.reconcile_attempts)
+            attempt.next_reconcile_at = now_ts + timedelta(seconds=delay)
+            attempt.updated_at = now_ts
         db.commit()
         return attempt
 
@@ -2210,7 +2292,16 @@ def reconcile_single_payment_attempt(attempt_id: int, db: Session) -> Optional[P
             attempt = db.query(PaymentAttempt).filter(PaymentAttempt.attempt_id == attempt_id).with_for_update().first()
 
             if conf_status == "CONFIRMED":
-                finalize_order_payment(db, order=order, chk=chk, attempt=attempt, method=method, amount=amount, now_ts=now_ts)
+                paid_ok = finalize_order_payment(db, order=order, chk=chk, attempt=attempt, method=method, amount=amount, now_ts=now_ts)
+                if not paid_ok:
+                    if attempt.status in ("INITIATED", "PROCESSING", "CONFIRMING"):
+                        attempt.status = "UNKNOWN"
+                    attempt.failure_code = "CONFIRMED_WITHOUT_ELIGIBLE_PAYMENT"
+                    attempt.failure_reason = "Inventory reservation is confirmed but no eligible payment attempt exists"
+                    attempt.reconcile_attempts += 1
+                    delay = min(300, 2 ** attempt.reconcile_attempts)
+                    attempt.next_reconcile_at = now_ts + timedelta(seconds=delay)
+                    attempt.updated_at = now_ts
                 db.commit()
                 return attempt
             elif conf_status == "EXPIRED":
@@ -2454,17 +2545,22 @@ def pay_order(
                 now_fin = datetime.now(timezone.utc)
 
                 if probe_status == "CONFIRMED":
-                    finalize_order_payment(
+                    paid_ok = finalize_order_payment(
                         db=db,
                         order=order,
                         chk=chk,
-                        attempt=latest_attempt,
-                        method=latest_attempt.method if latest_attempt else "Credit Card",
+                        attempt=None,
                         amount=order.total_amount,
                         now_ts=now_fin
                     )
                     db.commit()
-                    raise HTTPException(status_code=400, detail="Order reservation was already confirmed; payment reconciled to Paid")
+                    if paid_ok:
+                        raise HTTPException(status_code=400, detail="Order reservation was already confirmed; payment reconciled to Paid")
+                    else:
+                        raise HTTPException(
+                            status_code=409,
+                            detail="Order reservation is confirmed but no eligible payment attempt exists; preserved for review"
+                        )
                 elif probe_status in ("RELEASED", "EXPIRED"):
                     order.status = "Cancelled"
                     chk.status = "FAILED"
@@ -2556,7 +2652,7 @@ def pay_order(
         now_fin = datetime.now(timezone.utc)
 
         if conf_status == "CONFIRMED":
-            finalize_order_payment(
+            paid_ok = finalize_order_payment(
                 db=db,
                 order=order,
                 chk=chk,
@@ -2566,7 +2662,13 @@ def pay_order(
                 now_ts=now_fin
             )
             db.commit()
-            return build_payment_response(att)
+            if paid_ok:
+                return build_payment_response(att)
+            else:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Order reservation is confirmed but payment attempt is not eligible; preserved for review"
+                )
 
         elif conf_status == "EXPIRED":
             att.status = "EXPIRED"
@@ -2808,21 +2910,29 @@ def cancel_order(
         now_ts = datetime.now(timezone.utc)
 
         if probe_status == "CONFIRMED":
-            finalize_order_payment(
+            paid_ok = finalize_order_payment(
                 db=db,
                 order=order,
                 chk=chk,
-                attempt=latest_attempt,
-                method=latest_attempt.method if latest_attempt else "Credit Card",
+                attempt=None,
                 amount=order.total_amount,
                 now_ts=now_ts
             )
             if canc:
                 canc.status = "FAILED"
-                canc.reason = "Cannot cancel order: inventory reservation is already confirmed"
+                if paid_ok:
+                    canc.reason = "Cannot cancel order: inventory reservation is already confirmed and paid"
+                else:
+                    canc.reason = "Cannot cancel order: inventory reservation is confirmed but no eligible payment attempt exists; flagged for review"
                 canc.updated_at = now_ts
             db.commit()
-            raise HTTPException(status_code=400, detail="Cannot cancel order: inventory reservation is already confirmed")
+            if paid_ok:
+                raise HTTPException(status_code=400, detail="Cannot cancel order: inventory reservation is already confirmed")
+            else:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Cannot cancel order: inventory reservation is confirmed but no eligible payment attempt exists; preserved for review"
+                )
 
         elif probe_status in ("RELEASED", "EXPIRED"):
             order.status = "Cancelled"
@@ -2874,8 +2984,18 @@ def get_order_payment_status(
     ).order_by(PaymentAttempt.attempt_id.asc()).all()
 
     has_in_flight = any(a.status in IN_FLIGHT_PAYMENT_STATUSES for a in attempts)
-    can_pay = (order.status == "Pending" and not is_expired and not has_in_flight)
-    can_cancel = (order.status == "Pending")
+    pending_canc = db.query(OrderCancellation).filter(
+        OrderCancellation.order_id == order_id,
+        OrderCancellation.status.in_(("PROCESSING", "UNKNOWN"))
+    ).first()
+    can_pay = (
+        order.status == "Pending"
+        and not is_expired
+        and not has_in_flight
+        and not pending_canc
+        and (chk.status not in ("COMPENSATION_REQUIRED", "CANCELLED", "FAILED") if chk else True)
+    )
+    can_cancel = (order.status == "Pending" and not has_in_flight)
 
     payment_record = None
     if order.payment:
@@ -3047,19 +3167,27 @@ def reconcile_all_pending_operations(db: Session, worker_id: str = "worker-1") -
                 chk.updated_at = now_fin
 
             if probe_status == "CONFIRMED":
-                finalize_order_payment(
+                paid_ok = finalize_order_payment(
                     db=db,
                     order=order,
                     chk=chk,
-                    attempt=latest_pa,
-                    method=latest_pa.method if latest_pa else "Credit Card",
+                    attempt=None,
                     amount=order.total_amount,
                     now_ts=now_fin
                 )
-                if canc and canc.status in ("PROCESSING", "UNKNOWN"):
-                    canc.status = "FAILED"
-                    canc.reason = "Cannot cancel order: inventory reservation is already confirmed"
-                    canc.updated_at = now_fin
+                if paid_ok:
+                    if canc and canc.status in ("PROCESSING", "UNKNOWN"):
+                        canc.status = "FAILED"
+                        canc.reason = "Cannot cancel order: inventory reservation is already confirmed and paid"
+                        canc.updated_at = now_fin
+                else:
+                    if chk:
+                        chk.reconcile_attempts += 1
+                        chk.next_reconcile_at = now_fin + timedelta(seconds=min(300, 2 ** chk.reconcile_attempts))
+                    if canc and canc.status in ("PROCESSING", "UNKNOWN"):
+                        canc.status = "FAILED"
+                        canc.reason = "Cannot cancel order: inventory reservation is confirmed but no eligible payment attempt exists; flagged for review"
+                        canc.updated_at = now_fin
             elif probe_status in ("RELEASED", "EXPIRED"):
                 if order:
                     order.status = "Cancelled"
